@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String      @id @default(cuid())
+  slug            String      @unique @default("default")
+  putioUserId     Int?        @unique
+  putioUsername   String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  files           PutioFile[]
+  media           Media[]
+  scanRuns        ScanRun[]
+}
+
+model PutioFile {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  putioFileId    Int
+  name           String
+  size           BigInt
+  parentId       Int
+  fileType       String
+  contentType    String
+  contentHash    String
+  putioCreatedAt DateTime?
+  mediaId        String?
+  media          Media?    @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  indexedAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, putioFileId])
+  @@index([userId, putioCreatedAt])
+  @@index([userId, fileType])
+  @@index([mediaId])
+}
+
+model Media {
+  id               String      @id @default(cuid())
+  userId           String
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind             String
+  title            String
+  stremioId        String
+  seriesKey        String?
+  season           Int?
+  episode          Int?
+  year             Int?
+  resolution       String?
+  metadataStatus   String      @default("pending")
+  files            PutioFile[]
+
+  @@unique([userId, stremioId])
+  @@index([userId, kind])
+  @@index([userId, seriesKey])
+}
+
+model ScanRun {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String
+  filesFound    Int       @default(0)
+  filesUpserted Int       @default(0)
+  errorMessage  String?
+
+  @@index([userId, startedAt])
+}

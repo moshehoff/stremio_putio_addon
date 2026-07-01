@@ -1,0 +1,19 @@
+{
+  "name": "@putio-stremio/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scan": "tsx src/scan.ts",
+    "scan:dry": "tsx src/scan.ts --dry-run",
+    "parse": "tsx src/parse.ts"
+  },
+  "dependencies": {
+    "@putio-stremio/db": "*",
+    "@putio-stremio/shared": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
