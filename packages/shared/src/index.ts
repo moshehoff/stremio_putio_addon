@@ -15,14 +15,7 @@ export {
 } from './errors.js';
 export {
   buildProxyUrl,
-  buildSubtitleProxyUrl,
   createProxyExpiry,
   signProxyRequest,
-  signSubtitleProxy,
   verifyProxySignature,
-  verifySubtitleProxy,
 } from './proxy-sig.js';
-export {
-  isEnglishSubtitle,
-  mapPutioLanguageToStremio,
-} from './subtitle-lang.js';

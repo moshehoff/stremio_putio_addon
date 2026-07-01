@@ -61,7 +61,7 @@ export async function enrichLibraryMetadata(): Promise<EnrichResult> {
       },
     });
 
-    if (existing?.metadataStatus === 'matched') {
+    if (existing?.metadataStatus === 'matched' && existing.imdbId) {
       seriesMatched += 1;
       continue;
     }
@@ -100,6 +100,7 @@ export async function enrichLibraryMetadata(): Promise<EnrichResult> {
           seriesKey,
           title: info.title,
           tmdbId: details.id,
+          imdbId: details.imdbId ?? null,
           posterPath: details.posterPath ?? null,
           backdropPath: details.backdropPath ?? null,
           overview: details.overview ?? null,
@@ -109,6 +110,7 @@ export async function enrichLibraryMetadata(): Promise<EnrichResult> {
         },
         update: {
           tmdbId: details.id,
+          imdbId: details.imdbId ?? null,
           posterPath: details.posterPath ?? null,
           backdropPath: details.backdropPath ?? null,
           overview: details.overview ?? null,
@@ -132,7 +134,7 @@ export async function enrichLibraryMetadata(): Promise<EnrichResult> {
   });
 
   for (const movie of movies) {
-    if (movie.metadataStatus === 'matched' && movie.posterPath) {
+    if (movie.metadataStatus === 'matched' && movie.posterPath && movie.imdbId) {
       moviesMatched += 1;
       continue;
     }

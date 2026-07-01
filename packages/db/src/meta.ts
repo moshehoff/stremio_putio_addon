@@ -23,6 +23,7 @@ export interface StremioMeta {
   releaseInfo?: string;
   background?: string;
   genres?: string[];
+  imdb_id?: string;
   videos?: StremioVideo[];
 }
 
@@ -82,6 +83,7 @@ export async function getSeriesMeta(stremioId: string): Promise<StremioMeta> {
       `${videos.length} episodes from your Put.io library`,
     releaseInfo: seriesMeta?.year ? String(seriesMeta.year) : undefined,
     genres: parseGenres(seriesMeta?.genres),
+    imdb_id: seriesMeta?.imdbId ?? undefined,
     videos,
   };
 }
@@ -113,6 +115,7 @@ export async function getMovieMeta(stremioId: string): Promise<StremioMeta> {
     description: movie.overview ?? undefined,
     releaseInfo: movie.year ? String(movie.year) : undefined,
     genres: parseGenres(movie.genres),
+    imdb_id: movie.imdbId ?? undefined,
   };
 }
 

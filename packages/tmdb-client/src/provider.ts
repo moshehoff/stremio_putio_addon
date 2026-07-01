@@ -90,7 +90,9 @@ class TmdbHttpClient implements TmdbProvider {
   }
 
   async getTvDetails(id: number): Promise<TmdbDetails> {
-    const data = await this.get<RawTvDetails>(`/tv/${id}`);
+    const data = await this.get<RawTvDetails>(`/tv/${id}`, {
+      append_to_response: 'external_ids',
+    });
     return mapTvDetails(data);
   }
 
@@ -141,6 +143,7 @@ type RawTvDetails = {
   backdrop_path?: string | null;
   genres?: Array<{ id: number; name: string }>;
   first_air_date?: string;
+  external_ids?: { imdb_id?: string | null };
 };
 
 function mapSearchResult(item: RawSearchItem): TmdbSearchResult {
@@ -171,6 +174,7 @@ function mapMovieDetails(item: RawMovieDetails): TmdbDetails {
 function mapTvDetails(item: RawTvDetails): TmdbDetails {
   return {
     id: item.id,
+    imdbId: item.external_ids?.imdb_id ?? null,
     overview: item.overview,
     posterPath: item.poster_path,
     backdropPath: item.backdrop_path,
