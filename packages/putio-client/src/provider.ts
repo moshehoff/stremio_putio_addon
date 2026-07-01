@@ -9,6 +9,7 @@ import type {
   PaginatedFiles,
   PutioAccountInfo,
   PutioFileRecord,
+  PutioSubtitleRecord,
 } from './types.js';
 
 const PUTIO_API_BASE = 'https://api.put.io/v2';
@@ -35,6 +36,13 @@ type PutioErrorBody = {
   error_message?: string;
 };
 
+type RawSubtitle = {
+  key: string;
+  language: string;
+  name: string;
+  source: string;
+};
+
 export interface PutioProvider {
   getAccountInfo(): Promise<PutioAccountInfo>;
   listAllFiles(options?: ListAllFilesOptions): Promise<PutioFileRecord[]>;
@@ -44,6 +52,12 @@ export interface PutioProvider {
     fileTypes?: string[];
   }): Promise<PaginatedFiles>;
   getDownloadUrl(fileId: number): Promise<string>;
+  listSubtitles(fileId: number): Promise<PutioSubtitleRecord[]>;
+  getSubtitleContent(
+    fileId: number,
+    key: string,
+    format?: 'webvtt' | 'srt',
+  ): Promise<string>;
 }
 
 export function createPutioProvider(token: string): PutioProvider {
@@ -54,6 +68,9 @@ export function createPutioProvider(token: string): PutioProvider {
     listAllFiles: (options) => withRetry(() => client.listAllFiles(options)),
     listFilesPage: (options) => withRetry(() => client.listFilesPage(options)),
     getDownloadUrl: (fileId) => withRetry(() => client.getDownloadUrl(fileId)),
+    listSubtitles: (fileId) => withRetry(() => client.listSubtitles(fileId)),
+    getSubtitleContent: (fileId, key, format) =>
+      withRetry(() => client.getSubtitleContent(fileId, key, format)),
   };
 }
 
@@ -122,6 +139,43 @@ class PutioHttpClient {
       throw new PutioFileNotFoundError(fileId);
     }
     return data.url;
+  }
+
+  async listSubtitles(fileId: number): Promise<PutioSubtitleRecord[]> {
+    const data = await this.get<{ subtitles?: RawSubtitle[] }>(
+      `/files/${fileId}/subtitles`,
+    );
+    return (data.subtitles ?? []).map((sub) => ({
+      key: sub.key,
+      language: sub.language,
+      name: sub.name,
+      source: sub.source,
+    }));
+  }
+
+  async getSubtitleContent(
+    fileId: number,
+    key: string,
+    format: 'webvtt' | 'srt' = 'webvtt',
+  ): Promise<string> {
+    const url = new URL(`${PUTIO_API_BASE}/files/${fileId}/subtitles/${key}`);
+    url.searchParams.set('format', format);
+
+    const response = await fetch(url, {
+      headers: this.headers(),
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      throw new PutioAuthError();
+    }
+    if (response.status === 404) {
+      throw new PutioFileNotFoundError(fileId);
+    }
+    if (!response.ok) {
+      throw new Error(`Put.io subtitle request failed: ${response.status}`);
+    }
+
+    return response.text();
   }
 
   private async get<T>(

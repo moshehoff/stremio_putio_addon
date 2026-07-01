@@ -25,3 +25,10 @@ export interface ListAllFilesOptions {
   perPage?: number;
   fileTypes?: string[];
 }
+
+export interface PutioSubtitleRecord {
+  key: string;
+  language: string;
+  name: string;
+  source: string;
+}

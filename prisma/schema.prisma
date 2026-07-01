@@ -16,6 +16,7 @@ model User {
   updatedAt       DateTime    @updatedAt
   files           PutioFile[]
   media           Media[]
+  seriesMeta      SeriesMeta[]
   scanRuns        ScanRun[]
 }
 
@@ -54,12 +55,38 @@ model Media {
   episode          Int?
   year             Int?
   resolution       String?
+  tmdbId           Int?
+  imdbId           String?
+  posterPath       String?
+  backdropPath     String?
+  overview         String?
+  genres           Json?
   metadataStatus   String      @default("pending")
   files            PutioFile[]
 
   @@unique([userId, stremioId])
   @@index([userId, kind])
   @@index([userId, seriesKey])
+  @@index([tmdbId])
+}
+
+model SeriesMeta {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seriesKey        String
+  title            String
+  tmdbId           Int?
+  posterPath       String?
+  backdropPath     String?
+  overview         String?
+  genres           Json?
+  year             Int?
+  metadataStatus   String   @default("pending")
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, seriesKey])
+  @@index([userId, metadataStatus])
 }
 
 model ScanRun {

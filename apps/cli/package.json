@@ -6,7 +6,8 @@
   "scripts": {
     "scan": "tsx src/scan.ts",
     "scan:dry": "tsx src/scan.ts --dry-run",
-    "parse": "tsx src/parse.ts"
+    "parse": "tsx src/parse.ts",
+    "enrich": "tsx src/enrich.ts"
   },
   "dependencies": {
     "@putio-stremio/db": "*",

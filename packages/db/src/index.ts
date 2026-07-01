@@ -21,6 +21,16 @@ export {
   type ParseResult,
 } from './parse.js';
 export {
+  enrichLibraryMetadata,
+  type EnrichResult,
+} from './enrich.js';
+export {
+  PLACEHOLDER_POSTER,
+  resolveBackdropUrl,
+  resolvePosterUrl,
+  yearFromDate,
+} from './posters.js';
+export {
   scanPutioLibrary,
   verifyPutioConnection,
   type ScanOptions,

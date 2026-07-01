@@ -4,10 +4,9 @@ import {
 } from '@putio-stremio/media-parser';
 import { prisma } from './client.js';
 import { getDefaultUser } from './parse.js';
+import { resolvePosterUrl } from './posters.js';
 
 const PAGE_SIZE = 100;
-const PLACEHOLDER_POSTER =
-  'https://www.strem.io/images/addon_default.png';
 
 export interface CatalogExtra {
   search?: string;
@@ -77,13 +76,28 @@ export async function getSeriesCatalog(
 
   const page = seriesList.slice(skip, skip + PAGE_SIZE);
 
-  return page.map((series) => ({
-    id: buildSeriesStremioId(series.seriesKey),
-    type: 'series' as const,
-    name: series.title,
-    poster: PLACEHOLDER_POSTER,
-    releaseInfo: series.year ? String(series.year) : undefined,
-  }));
+  const seriesMeta = await prisma.seriesMeta.findMany({
+    where: {
+      userId: user.id,
+      seriesKey: { in: page.map((s) => s.seriesKey) },
+    },
+  });
+  const metaByKey = new Map(seriesMeta.map((m) => [m.seriesKey, m]));
+
+  return page.map((series) => {
+    const meta = metaByKey.get(series.seriesKey);
+    return {
+      id: buildSeriesStremioId(series.seriesKey),
+      type: 'series' as const,
+      name: series.title,
+      poster: resolvePosterUrl(meta?.posterPath),
+      releaseInfo: meta?.year
+        ? String(meta.year)
+        : series.year
+          ? String(series.year)
+          : undefined,
+    };
+  });
 }
 
 export async function getMoviesCatalog(
@@ -119,7 +133,7 @@ export async function getMoviesCatalog(
     id: movie.stremioId,
     type: 'movie' as const,
     name: movie.title,
-    poster: PLACEHOLDER_POSTER,
+    poster: resolvePosterUrl(movie.posterPath),
     releaseInfo: movie.year ? String(movie.year) : undefined,
   }));
 }

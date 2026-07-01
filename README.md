@@ -25,10 +25,13 @@ npm run db:push
 npm run scan:dry    # list only, no DB write
 npm run scan        # save files to database
 
-# 5. Run API
+# 5. Enrich metadata (M4) — requires TMDB_API_KEY in .env
+npm run enrich
+
+# 6. Run API
 npm run dev
 
-# 6. Tests
+# 7. Tests
 npm test
 ```
 

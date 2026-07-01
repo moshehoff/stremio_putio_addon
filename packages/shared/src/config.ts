@@ -47,6 +47,14 @@ export function requireSecretKey(): string {
   return key;
 }
 
+export function requireTmdbApiKey(): string {
+  const key = getEnv().TMDB_API_KEY;
+  if (!key) {
+    throw new ValidationError('TMDB_API_KEY is required in .env for metadata');
+  }
+  return key;
+}
+
 export function resetEnvForTests(): void {
   cached = undefined;
 }

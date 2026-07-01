@@ -6,6 +6,7 @@ import {
   requirePutioToken,
   requireSecretKey,
   verifyProxySignature,
+  verifySubtitleProxy,
 } from '@putio-stremio/shared';
 
 const FORWARDED_HEADERS = [
@@ -64,5 +65,33 @@ export async function registerProxyRoutes(app: FastifyInstance) {
     }
 
     return reply.send(upstream.body);
+  });
+
+  app.get('/v1/subtitles/:fileId/:lang.vtt', async (request, reply) => {
+    const { fileId } = request.params as { fileId: string; lang: string };
+    const query = request.query as { key?: string; exp?: string; sig?: string };
+
+    const putioFileId = Number.parseInt(fileId, 10);
+    const subKey = query.key ?? '';
+    const exp = Number.parseInt(query.exp ?? '', 10);
+    const sig = query.sig ?? '';
+    const secret = requireSecretKey();
+
+    if (!Number.isFinite(putioFileId) || putioFileId <= 0 || !subKey) {
+      throw new NotFoundError('Invalid subtitle request');
+    }
+
+    if (!verifySubtitleProxy(putioFileId, subKey, exp, sig, secret)) {
+      throw new ForbiddenError('Invalid or expired subtitle signature');
+    }
+
+    const putio = createPutioProvider(requirePutioToken());
+    const content = await putio.getSubtitleContent(putioFileId, subKey, 'webvtt');
+
+    return reply
+      .header('Content-Type', 'text/vtt; charset=utf-8')
+      .header('Access-Control-Allow-Origin', '*')
+      .header('Cache-Control', 'public, max-age=86400')
+      .send(content);
   });
 }

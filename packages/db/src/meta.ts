@@ -3,9 +3,7 @@ import { NotFoundError } from '@putio-stremio/shared';
 import { prisma } from './client.js';
 import { getDefaultUser } from './parse.js';
 import { parseSeriesStremioId, seriesTitleFromKey } from './catalog.js';
-
-const PLACEHOLDER_POSTER =
-  'https://www.strem.io/images/addon_default.png';
+import { resolveBackdropUrl, resolvePosterUrl } from './posters.js';
 
 export interface StremioVideo {
   id: string;
@@ -23,6 +21,8 @@ export interface StremioMeta {
   poster: string;
   description?: string;
   releaseInfo?: string;
+  background?: string;
+  genres?: string[];
   videos?: StremioVideo[];
 }
 
@@ -54,6 +54,15 @@ export async function getSeriesMeta(stremioId: string): Promise<StremioMeta> {
 
   const title = episodes[0]?.title ?? seriesTitleFromKey(seriesKey);
 
+  const seriesMeta = await prisma.seriesMeta.findUnique({
+    where: {
+      userId_seriesKey: {
+        userId: user.id,
+        seriesKey,
+      },
+    },
+  });
+
   const videos: StremioVideo[] = episodes.map((item) => ({
     id: buildEpisodeStremioId(seriesKey, item.season!, item.episode!),
     title: `S${pad2(item.season!)}E${pad2(item.episode!)}`,
@@ -66,8 +75,13 @@ export async function getSeriesMeta(stremioId: string): Promise<StremioMeta> {
     id: stremioId,
     type: 'series',
     name: title,
-    poster: PLACEHOLDER_POSTER,
-    description: `${videos.length} episodes from your Put.io library`,
+    poster: resolvePosterUrl(seriesMeta?.posterPath),
+    background: resolveBackdropUrl(seriesMeta?.backdropPath),
+    description:
+      seriesMeta?.overview ??
+      `${videos.length} episodes from your Put.io library`,
+    releaseInfo: seriesMeta?.year ? String(seriesMeta.year) : undefined,
+    genres: parseGenres(seriesMeta?.genres),
     videos,
   };
 }
@@ -94,9 +108,26 @@ export async function getMovieMeta(stremioId: string): Promise<StremioMeta> {
     id: movie.stremioId,
     type: 'movie',
     name: movie.title,
-    poster: PLACEHOLDER_POSTER,
+    poster: resolvePosterUrl(movie.posterPath),
+    background: resolveBackdropUrl(movie.backdropPath),
+    description: movie.overview ?? undefined,
     releaseInfo: movie.year ? String(movie.year) : undefined,
+    genres: parseGenres(movie.genres),
   };
+}
+
+function parseGenres(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const names = value
+    .map((item) =>
+      typeof item === 'object' && item && 'name' in item
+        ? String((item as { name: string }).name)
+        : null,
+    )
+    .filter((name): name is string => Boolean(name));
+  return names.length > 0 ? names : undefined;
 }
 
 function pad2(value: number): string {

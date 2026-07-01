@@ -11,4 +11,5 @@ export type {
   PaginatedFiles,
   PutioAccountInfo,
   PutioFileRecord,
+  PutioSubtitleRecord,
 } from './types.js';

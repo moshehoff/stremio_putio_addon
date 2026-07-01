@@ -1,5 +1,5 @@
 {
-  "name": "@putio-stremio/db",
+  "name": "@putio-stremio/tmdb-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,16 +12,14 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@prisma/client": "^6.8.2",
-    "@putio-stremio/media-parser": "*",
-    "@putio-stremio/putio-client": "*",
-    "@putio-stremio/shared": "*",
-    "@putio-stremio/tmdb-client": "*"
+    "@putio-stremio/shared": "*"
   },
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
   }
 }

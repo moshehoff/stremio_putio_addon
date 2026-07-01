@@ -6,6 +6,7 @@ import {
   requireSecretKey,
 } from '@putio-stremio/shared';
 import { resolveVideoToPutioFile } from '@putio-stremio/db';
+import { fetchEnglishSubtitlesForFile } from '../services/subtitles.js';
 
 const CACHE_STREAM = 'public, max-age=300';
 
@@ -17,6 +18,11 @@ export interface StremioStream {
     notWebReady?: boolean;
     bingeGroup?: string;
   };
+  subtitles?: Array<{
+    id: string;
+    lang: string;
+    url: string;
+  }>;
 }
 
 export async function registerStreamRoutes(app: FastifyInstance) {
@@ -38,6 +44,11 @@ export async function registerStreamRoutes(app: FastifyInstance) {
     const secret = requireSecretKey();
     const file = await resolveVideoToPutioFile(videoId);
     const proxyUrl = buildProxyUrl(env.BASE_URL, file.putioFileId, secret);
+    const subtitles = await fetchEnglishSubtitlesForFile(
+      file.putioFileId,
+      env.BASE_URL,
+      secret,
+    );
 
     const streams: StremioStream[] = [
       {
@@ -48,6 +59,7 @@ export async function registerStreamRoutes(app: FastifyInstance) {
           notWebReady: file.notWebReady,
           bingeGroup: 'putio',
         },
+        ...(subtitles.length > 0 ? { subtitles } : {}),
       },
     ];
 
