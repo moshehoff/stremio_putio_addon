@@ -19,3 +19,12 @@ export {
   signProxyRequest,
   verifyProxySignature,
 } from './proxy-sig.js';
+export {
+  buildLanBaseUrl,
+  getLocalLanIpv4Addresses,
+  primaryLanIpv4,
+} from './lan-ip.js';
+export {
+  normalizeBaseUrl,
+  resolveRequestBaseUrl,
+} from './request-base-url.js';
