@@ -59,7 +59,7 @@ Use `127.0.0.1` — not `localhost` (Stremio Desktop fails to fetch on localhost
 
 Stremio on Android **blocks HTTP** addon URLs. Use a Cloudflare Tunnel:
 
-1. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) (or use the exe in Downloads — auto-detected)
+1. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
 2. Terminal 1: `npm run dev`
 3. Terminal 2: `npm run tunnel`
 4. Copy the printed `https://....trycloudflare.com/manifest.json` URL
@@ -67,12 +67,6 @@ Stremio on Android **blocks HTTP** addon URLs. Use a Cloudflare Tunnel:
 6. Open Stremio on Android — same account — addon syncs automatically
 
 Stream URLs use the tunnel host automatically (via request Host header).
-
-### LG webOS (same HTTPS install as Android)
-
-The LG Stremio app cannot paste addon URLs. Install via **Stremio Web** + account sync, then on TV pick **Put.io MP4 (TV / webOS)** streams when available.
-
-See **[docs/LG-WEBOS.md](docs/LG-WEBOS.md)** for full TV setup and troubleshooting.
 
 ### Android (LAN — HTTP, often blocked by Stremio)
 

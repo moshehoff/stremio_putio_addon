@@ -1,8 +1,4 @@
-export {
-  createPutioProvider,
-  type PutioMp4PlaybackInfo,
-  type PutioProvider,
-} from './provider.js';
+export { createPutioProvider, type PutioProvider } from './provider.js';
 export { buildContentHash } from './hash.js';
 export {
   PutioAuthError,

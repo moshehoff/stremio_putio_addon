@@ -15,16 +15,10 @@ export {
 } from './errors.js';
 export {
   buildProxyUrl,
-  buildMp4ProxyUrl,
   createProxyExpiry,
   signProxyRequest,
-  signMp4ProxyRequest,
   verifyProxySignature,
-  verifyMp4ProxySignature,
 } from './proxy-sig.js';
-export {
-  isWebOsUserAgent,
-} from './client-detect.js';
 export {
   buildLanBaseUrl,
   getLocalLanIpv4Addresses,

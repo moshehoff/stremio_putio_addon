@@ -23,10 +23,6 @@ type RawPutioFile = {
   content_type: string;
   created_at: string;
   crc32?: string;
-  is_mp4_available?: boolean;
-  need_convert?: boolean;
-  mp4_size?: number;
-  mp4_stream_url?: string;
 };
 
 type ListResponse = {
@@ -47,12 +43,6 @@ type RawSubtitle = {
   source: string;
 };
 
-export interface PutioMp4PlaybackInfo {
-  available: boolean;
-  mp4Size?: number;
-  streamUrl?: string;
-}
-
 export interface PutioProvider {
   getAccountInfo(): Promise<PutioAccountInfo>;
   listAllFiles(options?: ListAllFilesOptions): Promise<PutioFileRecord[]>;
@@ -62,10 +52,6 @@ export interface PutioProvider {
     fileTypes?: string[];
   }): Promise<PaginatedFiles>;
   getDownloadUrl(fileId: number): Promise<string>;
-  getMp4PlaybackInfo(
-    fileId: number,
-    parentId: number,
-  ): Promise<PutioMp4PlaybackInfo>;
   listSubtitles(fileId: number): Promise<PutioSubtitleRecord[]>;
   getSubtitleContent(
     fileId: number,
@@ -82,8 +68,6 @@ export function createPutioProvider(token: string): PutioProvider {
     listAllFiles: (options) => withRetry(() => client.listAllFiles(options)),
     listFilesPage: (options) => withRetry(() => client.listFilesPage(options)),
     getDownloadUrl: (fileId) => withRetry(() => client.getDownloadUrl(fileId)),
-    getMp4PlaybackInfo: (fileId, parentId) =>
-      withRetry(() => client.getMp4PlaybackInfo(fileId, parentId)),
     listSubtitles: (fileId) => withRetry(() => client.listSubtitles(fileId)),
     getSubtitleContent: (fileId, key, format) =>
       withRetry(() => client.getSubtitleContent(fileId, key, format)),
@@ -155,48 +139,6 @@ class PutioHttpClient {
       throw new PutioFileNotFoundError(fileId);
     }
     return data.url;
-  }
-
-  async getMp4PlaybackInfo(
-    fileId: number,
-    parentId: number,
-  ): Promise<PutioMp4PlaybackInfo> {
-    let cursor: string | undefined;
-
-    do {
-      const data = cursor
-        ? await this.post<ListResponse>('/files/list/continue', {
-            cursor,
-            per_page: 100,
-          })
-        : await this.get<ListResponse>('/files/list', {
-            parent_id: parentId,
-            per_page: 100,
-            file_type: 'VIDEO',
-            mp4_stream_url: 'true',
-            mp4_status: 'true',
-          });
-
-      const match = (data.files ?? []).find((file) => file.id === fileId);
-      if (match) {
-        if (
-          match.is_mp4_available &&
-          !match.need_convert &&
-          match.mp4_stream_url
-        ) {
-          return {
-            available: true,
-            mp4Size: match.mp4_size,
-            streamUrl: match.mp4_stream_url,
-          };
-        }
-        return { available: false };
-      }
-
-      cursor = data.cursor ?? undefined;
-    } while (cursor);
-
-    return { available: false };
   }
 
   async listSubtitles(fileId: number): Promise<PutioSubtitleRecord[]> {

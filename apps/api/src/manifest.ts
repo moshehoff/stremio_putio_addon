@@ -45,7 +45,7 @@ export type Manifest = z.infer<typeof manifestSchema>;
 export function buildManifest(): Manifest {
   return {
     id: 'com.putio.library',
-    version: '0.4.0',
+    version: '0.3.0',
     name: 'Put.io Library',
     description:
       'Stream your Put.io cloud library in Stremio — series and movies.',
