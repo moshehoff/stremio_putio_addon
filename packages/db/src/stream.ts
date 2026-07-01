@@ -4,6 +4,7 @@ import { getDefaultUser } from './parse.js';
 
 export interface ResolvedPutioFile {
   putioFileId: number;
+  parentId: number;
   name: string;
   contentType: string;
   size: bigint;
@@ -39,6 +40,7 @@ export async function resolveVideoToPutioFile(
 
   return {
     putioFileId: file.putioFileId,
+    parentId: file.parentId,
     name: file.name,
     contentType: file.contentType,
     size: file.size,

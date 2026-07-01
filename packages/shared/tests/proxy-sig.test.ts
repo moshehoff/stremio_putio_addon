@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildMp4ProxyUrl,
   buildProxyUrl,
   createProxyExpiry,
   signProxyRequest,
+  verifyMp4ProxySignature,
   verifyProxySignature,
 } from '../src/proxy-sig.js';
 
@@ -30,5 +32,15 @@ describe('proxy-sig', () => {
     expect(parsed.pathname).toBe('/v1/proxy/42');
     expect(parsed.searchParams.get('exp')).toBeTruthy();
     expect(parsed.searchParams.get('sig')).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('builds and verifies an MP4 proxy URL', () => {
+    const url = buildMp4ProxyUrl('http://127.0.0.1:7000', 42, 999, secret, 3600);
+    const parsed = new URL(url);
+    expect(parsed.pathname).toBe('/v1/proxy/42/mp4');
+    expect(parsed.searchParams.get('parent_id')).toBe('999');
+    const exp = Number.parseInt(parsed.searchParams.get('exp') ?? '', 10);
+    const sig = parsed.searchParams.get('sig') ?? '';
+    expect(verifyMp4ProxySignature(42, 999, exp, sig, secret)).toBe(true);
   });
 });
