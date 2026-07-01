@@ -9,6 +9,7 @@
   "scripts": {
     "build": "npm run build -w @putio-stremio/shared && npm run build -w @putio-stremio/tmdb-client && npm run build -w @putio-stremio/media-parser && npm run build -w @putio-stremio/putio-client && npm run build -w @putio-stremio/db && npm run build -w @putio-stremio/api",
     "dev": "npm run dev -w @putio-stremio/api",
+    "tunnel": "node scripts/tunnel.mjs",
     "test": "npm run test -w @putio-stremio/shared && npm run test -w @putio-stremio/tmdb-client && npm run test -w @putio-stremio/media-parser && npm run test -w @putio-stremio/putio-client && npm run test -w @putio-stremio/api",
     "scan": "npm run scan -w @putio-stremio/cli",
     "scan:dry": "npm run scan:dry -w @putio-stremio/cli",

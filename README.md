@@ -31,7 +31,10 @@ npm run enrich
 # 6. Run API
 npm run dev
 
-# 7. Tests
+# 7. (Android) HTTPS tunnel — in a second terminal
+npm run tunnel
+
+# 8. Tests
 npm test
 ```
 
@@ -52,18 +55,26 @@ http://127.0.0.1:7000/manifest.json
 
 Use `127.0.0.1` — not `localhost` (Stremio Desktop fails to fetch on localhost).
 
-### Android (same Wi‑Fi as PC)
+### Android (requires HTTPS)
 
-1. Start the API: `npm run dev`
-2. Open `http://127.0.0.1:7000/health` on the PC — copy `install.android`
-3. On the phone, in Stremio → Addons → paste that URL (e.g. `http://192.168.1.42:7000/manifest.json`)
-4. Phone and PC must be on the **same Wi‑Fi**
+Stremio on Android **blocks HTTP** addon URLs. Use a Cloudflare Tunnel:
 
-Stream URLs are built from the client’s Host header, so Android gets LAN proxy links automatically.
+1. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+2. Terminal 1: `npm run dev`
+3. Terminal 2: `npm run tunnel`
+4. Copy the printed `https://....trycloudflare.com/manifest.json` URL
+5. Install in [Stremio Web](https://web.strem.io) or Desktop (logged in)
+6. Open Stremio on Android — same account — addon syncs automatically
 
-### Windows Firewall
+Stream URLs use the tunnel host automatically (via request Host header).
 
-If the phone cannot reach the addon, allow inbound TCP **7000** for Node.js (Private network).
+### Android (LAN — HTTP, often blocked by Stremio)
+
+LAN install only works if your Stremio version allows HTTP on local IPs:
+
+1. `npm run dev`
+2. Open `http://127.0.0.1:7000/health` — copy `install.android`
+3. Same Wi‑Fi as PC; allow Windows Firewall port **7000**
 
 ## Project structure
 
