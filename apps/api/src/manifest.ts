@@ -41,14 +41,24 @@ export const manifestSchema = z.object({
 });
 
 export type Manifest = z.infer<typeof manifestSchema>;
+export type ManifestCatalog = z.infer<typeof catalogSchema>;
 
-export function buildManifest(): Manifest {
+const CATALOG_EXTRA = [
+  { name: 'search', isRequired: false },
+  { name: 'skip', isRequired: false },
+] as const;
+
+export function folderCatalogDisplayName(folderName: string): string {
+  return `Put.io ${folderName}`;
+}
+
+export function buildManifestBase(): Omit<Manifest, 'catalogs'> {
   return {
     id: 'com.putio.library',
-    version: '0.4.0',
+    version: '0.8.0',
     name: 'Put.io Library',
     description:
-      'Stream your Put.io cloud library in Stremio — series and movies.',
+      'Stream your Put.io cloud library in Stremio — one catalog per top-level folder.',
     resources: [
       'catalog',
       {
@@ -63,30 +73,24 @@ export function buildManifest(): Manifest {
       },
     ],
     types: ['movie', 'series'],
-    catalogs: [
-      {
-        type: 'series',
-        id: 'putio_series',
-        name: 'Put.io Series',
-        extra: [
-          { name: 'search', isRequired: false },
-          { name: 'skip', isRequired: false },
-        ],
-      },
-      {
-        type: 'movie',
-        id: 'putio_movies',
-        name: 'Put.io Movies',
-        extra: [
-          { name: 'search', isRequired: false },
-          { name: 'skip', isRequired: false },
-        ],
-      },
-    ],
     idPrefixes: ['putio:'],
     behaviorHints: {
       configurable: true,
       configurationRequired: false,
     },
+  };
+}
+
+export function buildManifestWithCatalogs(
+  folders: Array<{ catalogId: string; name: string }>,
+): Manifest {
+  return {
+    ...buildManifestBase(),
+    catalogs: folders.map((folder) => ({
+      type: 'series' as const,
+      id: folder.catalogId,
+      name: folderCatalogDisplayName(folder.name),
+      extra: [...CATALOG_EXTRA],
+    })),
   };
 }

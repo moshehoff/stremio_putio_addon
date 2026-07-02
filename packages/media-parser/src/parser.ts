@@ -104,6 +104,53 @@ export function buildEpisodeStremioId(
   return `putio:series:${seriesKey}:${season}:${episode}`;
 }
 
+export function buildFolderStremioId(parentId: number): string {
+  return `putio:folder:${parentId}`;
+}
+
+export function parseFolderStremioId(id: string): number | null {
+  const match = id.match(/^putio:folder:(\d+)$/);
+  if (!match?.[1]) {
+    return null;
+  }
+  const parentId = Number.parseInt(match[1], 10);
+  return Number.isNaN(parentId) ? null : parentId;
+}
+
+export function buildFolderSeriesStremioId(
+  parentId: number,
+  seriesKey: string,
+): string {
+  return `putio:folder:${parentId}:series:${seriesKey}`;
+}
+
+export function parseFolderSeriesStremioId(
+  id: string,
+): { parentId: number; seriesKey: string } | null {
+  const match = id.match(/^putio:folder:(\d+):series:(.+)$/);
+  if (!match?.[1] || !match[2]) {
+    return null;
+  }
+  const parentId = Number.parseInt(match[1], 10);
+  if (Number.isNaN(parentId)) {
+    return null;
+  }
+  return { parentId, seriesKey: match[2] };
+}
+
+export function buildFolderCatalogId(parentId: number): string {
+  return `putio_folder_${parentId}`;
+}
+
+export function parseFolderCatalogId(id: string): number | null {
+  const match = id.match(/^putio_folder_(\d+)$/);
+  if (!match?.[1]) {
+    return null;
+  }
+  const parentId = Number.parseInt(match[1], 10);
+  return Number.isNaN(parentId) ? null : parentId;
+}
+
 function stripExtension(filename: string): string {
   return filename.replace(/\.[a-z0-9]{2,5}$/i, '');
 }

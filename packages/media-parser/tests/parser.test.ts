@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildEpisodeStremioId,
+  buildFolderCatalogId,
+  buildFolderSeriesStremioId,
+  buildFolderStremioId,
   buildSeriesStremioId,
+  parseFolderCatalogId,
+  parseFolderSeriesStremioId,
+  parseFolderStremioId,
   parseMediaFilename,
 } from '../src/parser.js';
 
@@ -41,5 +47,21 @@ describe('stremio ids', () => {
     expect(buildEpisodeStremioId('friends', 4, 8)).toBe(
       'putio:series:friends:4:8',
     );
+  });
+
+  it('builds and parses folder ids', () => {
+    expect(buildFolderStremioId(12345)).toBe('putio:folder:12345');
+    expect(parseFolderStremioId('putio:folder:12345')).toBe(12345);
+    expect(parseFolderStremioId('putio:folder:12345:series:friends')).toBeNull();
+    expect(buildFolderCatalogId(99)).toBe('putio_folder_99');
+    expect(parseFolderCatalogId('putio_folder_99')).toBe(99);
+    expect(buildFolderSeriesStremioId(99, 'friends')).toBe(
+      'putio:folder:99:series:friends',
+    );
+    expect(parseFolderSeriesStremioId('putio:folder:99:series:friends')).toEqual({
+      parentId: 99,
+      seriesKey: 'friends',
+    });
+    expect(parseFolderSeriesStremioId('putio:series:friends')).toBeNull();
   });
 });

@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { buildManifest } from '../manifest.js';
+import { buildManifest } from '../manifest-builder.js';
 
 export async function registerManifestRoutes(app: FastifyInstance) {
   app.get('/manifest.json', async (_request, reply) => {
-    const manifest = buildManifest();
+    const manifest = await buildManifest();
     return reply
       .header('Cache-Control', 'public, max-age=3600')
       .send(manifest);

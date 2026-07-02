@@ -55,6 +55,7 @@ export interface PutioMp4PlaybackInfo {
 
 export interface PutioProvider {
   getAccountInfo(): Promise<PutioAccountInfo>;
+  getFile(fileId: number): Promise<PutioFileRecord>;
   listAllFiles(options?: ListAllFilesOptions): Promise<PutioFileRecord[]>;
   listFilesPage(options: {
     cursor?: string;
@@ -79,6 +80,7 @@ export function createPutioProvider(token: string): PutioProvider {
 
   return {
     getAccountInfo: () => withRetry(() => client.getAccountInfo()),
+    getFile: (fileId) => withRetry(() => client.getFile(fileId)),
     listAllFiles: (options) => withRetry(() => client.listAllFiles(options)),
     listFilesPage: (options) => withRetry(() => client.listFilesPage(options)),
     getDownloadUrl: (fileId) => withRetry(() => client.getDownloadUrl(fileId)),
@@ -107,6 +109,14 @@ class PutioHttpClient {
       username: data.info.username,
       email: data.info.mail ?? '',
     };
+  }
+
+  async getFile(fileId: number): Promise<PutioFileRecord> {
+    const data = await this.get<{ file?: RawPutioFile }>(`/files/${fileId}`);
+    if (!data.file) {
+      throw new PutioFileNotFoundError(fileId);
+    }
+    return mapPutioFile(data.file);
   }
 
   async listAllFiles(options: ListAllFilesOptions = {}): Promise<PutioFileRecord[]> {

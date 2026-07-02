@@ -1,10 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { NotFoundError } from '@putio-stremio/shared';
 import {
+  parseFolderCatalogId,
+  parseFolderSeriesStremioId,
+} from '@putio-stremio/media-parser';
+import {
   getMovieMeta,
-  getMoviesCatalog,
-  getSeriesCatalog,
-  getSeriesMeta,
+  getRawMediaMeta,
+  getFolderMediaCatalog,
+  getFolderSeriesMeta,
   parseCatalogExtra,
 } from '@putio-stremio/db';
 
@@ -33,12 +37,7 @@ export async function registerMetaRoutes(app: FastifyInstance) {
   app.get('/meta/:type/:id.json', async (request, reply) => {
     const { type, id } = request.params as { type: string; id: string };
 
-    const meta =
-      type === 'series'
-        ? await getSeriesMeta(id)
-        : type === 'movie'
-          ? await getMovieMeta(id)
-          : null;
+    const meta = await resolveMeta(type, id);
 
     if (!meta) {
       throw new NotFoundError('Unsupported meta type');
@@ -48,17 +47,29 @@ export async function registerMetaRoutes(app: FastifyInstance) {
   });
 }
 
+async function resolveMeta(type: string, id: string) {
+  if (type === 'series' && parseFolderSeriesStremioId(id)) {
+    return getFolderSeriesMeta(id);
+  }
+
+  if (type === 'movie' && id.startsWith('putio:raw:')) {
+    return getRawMediaMeta(id);
+  }
+
+  if (type === 'movie') {
+    return getMovieMeta(id);
+  }
+
+  return null;
+}
+
 async function resolveCatalog(
   type: string,
   id: string,
   extra: ReturnType<typeof parseCatalogExtra>,
 ) {
-  if (type === 'series' && id === 'putio_series') {
-    return getSeriesCatalog(extra);
-  }
-
-  if (type === 'movie' && id === 'putio_movies') {
-    return getMoviesCatalog(extra);
+  if (type === 'series' && parseFolderCatalogId(id) !== null) {
+    return getFolderMediaCatalog(id, extra);
   }
 
   return [];

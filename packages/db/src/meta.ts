@@ -3,7 +3,7 @@ import { NotFoundError } from '@putio-stremio/shared';
 import { prisma } from './client.js';
 import { getDefaultUser } from './parse.js';
 import { parseSeriesStremioId, seriesTitleFromKey } from './catalog.js';
-import { resolveBackdropUrl, resolvePosterUrl } from './posters.js';
+import { resolveBackdropUrl, resolvePosterUrl, PLACEHOLDER_POSTER } from './posters.js';
 
 export interface StremioVideo {
   id: string;
@@ -116,6 +116,41 @@ export async function getMovieMeta(stremioId: string): Promise<StremioMeta> {
     releaseInfo: movie.year ? String(movie.year) : undefined,
     genres: parseGenres(movie.genres),
     imdb_id: movie.imdbId ?? undefined,
+  };
+}
+
+export async function getRawMediaMeta(stremioId: string): Promise<StremioMeta> {
+  const user = await getDefaultUser();
+  if (!user) {
+    throw new NotFoundError('No library user');
+  }
+
+  const media = await prisma.media.findFirst({
+    where: {
+      userId: user.id,
+      stremioId,
+      kind: 'unmatched',
+    },
+    include: {
+      files: {
+        take: 1,
+        select: { name: true },
+      },
+    },
+  });
+
+  if (!media) {
+    throw new NotFoundError('File not found');
+  }
+
+  const displayName = media.files[0]?.name ?? media.title;
+
+  return {
+    id: media.stremioId,
+    type: 'movie',
+    name: displayName,
+    poster: PLACEHOLDER_POSTER,
+    description: displayName,
   };
 }
 

@@ -1,4 +1,7 @@
-import { scanPutioLibrary } from '@putio-stremio/db';
+import {
+  formatLibrarySummary,
+  scanPutioLibrary,
+} from '@putio-stremio/db';
 import { getEnv } from '@putio-stremio/shared';
 
 function parseArgs(argv: string[]) {
@@ -34,6 +37,17 @@ async function main() {
   if (!dryRun) {
     console.log(`Saved:    ${result.filesUpserted} files to database`);
     console.log(`Scan run: ${result.scanRunId}`);
+
+    if (result.parse) {
+      console.log('');
+      console.log(
+        `Parse:    ${result.parse.episodes} episodes, ${result.parse.movies} movies, ${result.parse.unmatched} unmatched`,
+      );
+    }
+
+    if (result.library) {
+      console.log(formatLibrarySummary(result.library));
+    }
   }
 }
 

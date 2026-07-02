@@ -14,6 +14,7 @@
     "scan": "npm run scan -w @putio-stremio/cli",
     "scan:dry": "npm run scan:dry -w @putio-stremio/cli",
     "parse": "npm run parse -w @putio-stremio/cli",
+    "unmatched": "npm run unmatched -w @putio-stremio/cli",
     "enrich": "npm run enrich -w @putio-stremio/cli",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

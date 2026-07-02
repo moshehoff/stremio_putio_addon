@@ -7,6 +7,7 @@
     "scan": "tsx src/scan.ts",
     "scan:dry": "tsx src/scan.ts --dry-run",
     "parse": "tsx src/parse.ts",
+    "unmatched": "tsx src/unmatched.ts",
     "enrich": "tsx src/enrich.ts"
   },
   "dependencies": {

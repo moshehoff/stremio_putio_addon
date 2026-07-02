@@ -6,7 +6,12 @@ import {
 } from '@putio-stremio/putio-client';
 import { createLogger } from '@putio-stremio/shared';
 import { prisma } from './client.js';
-import { parseMediaForUser } from './parse.js';
+import { parseMediaForUser, type ParseResult } from './parse.js';
+import { syncPutioFolderTree, assignRootFoldersToFiles } from './folders.js';
+import {
+  getLibrarySummary,
+  type LibrarySummary,
+} from './library-summary.js';
 
 const log = createLogger('indexer');
 
@@ -16,6 +21,8 @@ export interface ScanResult {
   filesFound: number;
   filesUpserted: number;
   scanRunId: string;
+  parse?: ParseResult;
+  library?: LibrarySummary;
 }
 
 export interface ScanOptions {
@@ -44,10 +51,30 @@ export async function scanPutioLibrary(
     );
 
     let filesUpserted = 0;
+    let parse: ParseResult | undefined;
+    let library: LibrarySummary | undefined;
 
     if (!options.dryRun) {
-      filesUpserted = await persistFiles(user.id, files);
-      await parseMediaForUser(user.id);
+      await removeInvalidPutioFiles(user.id);
+      const validFiles = files.filter((file) => file.id > 0);
+      if (validFiles.length < files.length) {
+        log.warn(
+          {
+            skipped: files.length - validFiles.length,
+          },
+          'Skipped Put.io entries with invalid file ids',
+        );
+      }
+
+      filesUpserted = await persistFiles(user.id, validFiles);
+      await syncPutioFolderTree(
+        user.id,
+        putio,
+        validFiles.map((file) => file.parentId),
+      );
+      await assignRootFoldersToFiles(user.id);
+      parse = await parseMediaForUser(user.id);
+      library = await getLibrarySummary(user.id);
     }
 
     if (scanRun) {
@@ -68,6 +95,8 @@ export async function scanPutioLibrary(
       filesFound: files.length,
       filesUpserted,
       scanRunId: scanRun?.id ?? 'dry-run',
+      parse,
+      library,
     };
   } catch (error) {
     if (scanRun) {
@@ -95,6 +124,12 @@ async function upsertUser(putioUserId: number, username: string) {
     update: {
       putioUsername: username,
     },
+  });
+}
+
+async function removeInvalidPutioFiles(userId: string) {
+  await prisma.putioFile.deleteMany({
+    where: { userId, putioFileId: { lte: 0 } },
   });
 }
 

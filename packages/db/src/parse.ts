@@ -89,6 +89,10 @@ export async function parseMediaForUser(userId: string): Promise<ParseResult> {
     mediaUpserted += 1;
   }
 
+  await prisma.media.deleteMany({
+    where: { userId, files: { none: {} } },
+  });
+
   log.info(
     { userId, filesProcessed: files.length, episodes, movies, unmatched },
     'Media parsing completed',
