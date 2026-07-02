@@ -148,8 +148,12 @@ export async function getRawMediaMeta(stremioId: string): Promise<StremioMeta> {
     id: media.stremioId,
     type: 'movie',
     name: displayName,
-    poster: PLACEHOLDER_POSTER,
-    description: displayName,
+    poster: resolvePosterUrl(media.posterPath),
+    background: resolveBackdropUrl(media.backdropPath),
+    description: media.overview ?? displayName,
+    releaseInfo: media.year ? String(media.year) : undefined,
+    genres: parseGenres(media.genres),
+    imdb_id: media.imdbId ?? undefined,
   };
 }
 

@@ -24,6 +24,8 @@ export {
 export {
   enrichLibraryMetadata,
   type EnrichResult,
+  type EnrichProgress,
+  type EnrichOptions,
 } from './enrich.js';
 export {
   PLACEHOLDER_POSTER,

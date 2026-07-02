@@ -10,6 +10,7 @@ export {
   parseFolderSeriesStremioId,
   parseFolderStremioId,
   parseMediaFilename,
+  guessTitleYearForPosterLookup,
   slugify,
 } from './parser.js';
 export type { MediaKind, ParsedMedia } from './types.js';

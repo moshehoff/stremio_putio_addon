@@ -11,6 +11,7 @@ import {
   parseFolderSeriesStremioId,
   parseFolderStremioId,
   parseMediaFilename,
+  guessTitleYearForPosterLookup,
 } from '../src/parser.js';
 
 describe('parseMediaFilename', () => {
@@ -51,6 +52,22 @@ describe('parseMediaFilename', () => {
   it('marks unknown files as unmatched', () => {
     const result = parseMediaFilename('random_clip.mp4');
     expect(result.kind).toBe('unmatched');
+  });
+});
+
+describe('guessTitleYearForPosterLookup', () => {
+  it('extracts title and year from parenthetical year prefix', () => {
+    const result = guessTitleYearForPosterLookup(
+      '(1968) Planet Of The Apes 1080p (moviesbyrizzo upl).mp4',
+    );
+    expect(result.title).toBe('Planet Of The Apes');
+    expect(result.year).toBe(1968);
+  });
+
+  it('extracts title and year from standard movie filename', () => {
+    const result = guessTitleYearForPosterLookup('Alien.Romulus.2024.2160p.WEB-DL.mkv');
+    expect(result.title).toBe('Alien Romulus');
+    expect(result.year).toBe(2024);
   });
 });
 

@@ -10,7 +10,6 @@ import type { CatalogExtra, StremioMetaPreview } from './catalog.js';
 import { seriesTitleFromKey } from './catalog.js';
 import { getDefaultUser } from './parse.js';
 import {
-  PLACEHOLDER_POSTER,
   resolveBackdropUrl,
   resolvePosterUrl,
 } from './posters.js';
@@ -147,7 +146,8 @@ export async function getFolderMediaCatalog(
         id: row.stremioId,
         type: 'movie',
         name: row.files[0]!.name,
-        poster: PLACEHOLDER_POSTER,
+        poster: resolvePosterUrl(row.posterPath),
+        releaseInfo: row.year ? String(row.year) : undefined,
       });
     }
   }

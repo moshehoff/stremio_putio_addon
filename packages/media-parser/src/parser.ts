@@ -93,6 +93,37 @@ export function parseMediaFilename(filename: string): ParsedMedia {
   };
 }
 
+/** Best-effort title/year from a filename for TMDb poster lookup (unmatched files). */
+export function guessTitleYearForPosterLookup(filename: string): {
+  title: string;
+  year?: number;
+} {
+  const baseName = stripExtension(filename);
+  const parsed = parseTorrentTitle(baseName);
+
+  const parenYearMatch = baseName.match(/^\((\d{4})\)\s*(.+)$/);
+  let year = parsed.year ?? extractYear(baseName);
+  if (parenYearMatch?.[1]) {
+    year = Number.parseInt(parenYearMatch[1], 10);
+  }
+
+  let title = parenYearMatch?.[2] ?? parsed.title ?? baseName;
+  title = cleanTitle(title.replace(/[._]+/g, ' '));
+  title = stripLookupNoise(title);
+
+  const titleYearMatch = title.match(/^(.+?)\s+((?:19|20)\d{2})\b/);
+  if (titleYearMatch?.[1] && titleYearMatch[2]) {
+    title = cleanTitle(titleYearMatch[1]);
+    year = year ?? Number.parseInt(titleYearMatch[2], 10);
+  }
+
+  if (title.length < 2) {
+    title = cleanTitle(stripLookupNoise(baseName));
+  }
+
+  return year ? { title, year } : { title };
+}
+
 export function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -245,6 +276,15 @@ function extractYear(value: string): number | undefined {
 function cleanTitle(value: string): string {
   return value
     .replace(/[._]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function stripLookupNoise(value: string): string {
+  return value
+    .replace(/\b(2160p|1080p|720p|480p|4k|web-?dl|bluray|brrip|hdrip|x264|x265|hevc|aac|10bit)\b/gi, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\[[^\]]*\]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
