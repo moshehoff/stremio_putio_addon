@@ -12,6 +12,8 @@ import { registerManifestRoutes } from './routes/manifest.js';
 import { registerCatalogRoutes, registerMetaRoutes } from './routes/stremio.js';
 import { registerStreamRoutes } from './routes/stream.js';
 import { registerProxyRoutes } from './routes/proxy.js';
+import { registerConfigureRoutes } from './routes/configure.js';
+import { startAutoScan } from './services/auto-scan.js';
 
 export async function buildApp() {
   const env = getEnv();
@@ -23,7 +25,7 @@ export async function buildApp() {
 
   await app.register(cors, {
     origin: true,
-    methods: ['GET', 'HEAD', 'OPTIONS'],
+    methods: ['GET', 'HEAD', 'OPTIONS', 'POST'],
   });
 
   app.setErrorHandler((error, _request, reply) => {
@@ -48,6 +50,7 @@ export async function buildApp() {
   await registerMetaRoutes(app);
   await registerStreamRoutes(app);
   await registerProxyRoutes(app);
+  await registerConfigureRoutes(app);
 
   app.addHook('onListen', () => {
     const desktopUrl = `${normalizeBaseUrl(env.BASE_URL)}/manifest.json`;
@@ -64,6 +67,8 @@ export async function buildApp() {
       },
       'API listening',
     );
+
+    startAutoScan();
   });
 
   return app;

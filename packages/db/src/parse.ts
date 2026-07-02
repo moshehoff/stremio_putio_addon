@@ -1,5 +1,5 @@
 import {
-  buildEpisodeStremioId,
+  buildEpisodeFileStremioId,
   parseMediaFilename,
 } from '@putio-stremio/media-parser';
 import { createLogger } from '@putio-stremio/shared';
@@ -34,11 +34,7 @@ export async function parseMediaForUser(userId: string): Promise<ParseResult> {
     let episode: number | null = null;
 
     if (parsed.kind === 'episode' && parsed.seriesKey && parsed.season && parsed.episode) {
-      stremioId = buildEpisodeStremioId(
-        parsed.seriesKey,
-        parsed.season,
-        parsed.episode,
-      );
+      stremioId = buildEpisodeFileStremioId(file.putioFileId);
       seriesKey = parsed.seriesKey;
       season = parsed.season;
       episode = parsed.episode;

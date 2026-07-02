@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildEpisodeFileStremioId,
   buildEpisodeStremioId,
+  parseEpisodeFileStremioId,
   buildFolderCatalogId,
   buildFolderSeriesStremioId,
   buildFolderStremioId,
@@ -29,6 +31,17 @@ describe('parseMediaFilename', () => {
     expect(result.episode).toBe(2);
   });
 
+  it('parses BlazeAnime dash-episode names', () => {
+    const result = parseMediaFilename(
+      'One Punch Man - 01 [1080p] [HEVC x265 10bit][dual audio][BlazeAnime].mkv',
+    );
+    expect(result.kind).toBe('episode');
+    expect(result.title).toBe('One Punch Man');
+    expect(result.seriesKey).toBe('one-punch-man');
+    expect(result.season).toBe(1);
+    expect(result.episode).toBe(1);
+  });
+
   it('parses movie names with year', () => {
     const result = parseMediaFilename('Alien.Romulus.2024.2160p.WEB-DL.mkv');
     expect(result.kind).toBe('movie');
@@ -47,6 +60,9 @@ describe('stremio ids', () => {
     expect(buildEpisodeStremioId('friends', 4, 8)).toBe(
       'putio:series:friends:4:8',
     );
+    expect(buildEpisodeFileStremioId(12345)).toBe('putio:episode:12345');
+    expect(parseEpisodeFileStremioId('putio:episode:12345')).toBe(12345);
+    expect(parseEpisodeFileStremioId('putio:series:friends:4:8')).toBeNull();
   });
 
   it('builds and parses folder ids', () => {

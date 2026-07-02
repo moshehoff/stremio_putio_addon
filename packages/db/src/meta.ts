@@ -1,4 +1,3 @@
-import { buildEpisodeStremioId } from '@putio-stremio/media-parser';
 import { NotFoundError } from '@putio-stremio/shared';
 import { prisma } from './client.js';
 import { getDefaultUser } from './parse.js';
@@ -65,7 +64,7 @@ export async function getSeriesMeta(stremioId: string): Promise<StremioMeta> {
   });
 
   const videos: StremioVideo[] = episodes.map((item) => ({
-    id: buildEpisodeStremioId(seriesKey, item.season!, item.episode!),
+    id: item.stremioId,
     title: `S${pad2(item.season!)}E${pad2(item.episode!)}`,
     season: item.season!,
     episode: item.episode!,

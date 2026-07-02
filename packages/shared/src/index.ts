@@ -34,3 +34,7 @@ export {
   normalizeBaseUrl,
   resolveRequestBaseUrl,
 } from './request-base-url.js';
+export {
+  encryptSecret,
+  decryptSecret,
+} from './token-crypto.js';

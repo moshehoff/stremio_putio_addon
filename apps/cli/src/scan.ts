@@ -1,5 +1,6 @@
 import {
   formatLibrarySummary,
+  getPutioAccessToken,
   scanPutioLibrary,
 } from '@putio-stremio/db';
 import { getEnv } from '@putio-stremio/shared';
@@ -14,20 +15,23 @@ async function main() {
   const { dryRun } = parseArgs(process.argv.slice(2));
   const env = getEnv();
 
-  if (!env.PUTIO_TOKEN) {
-    console.error('PUTIO_TOKEN is missing. Add it to your .env file.');
+  if (!env.DATABASE_URL) {
+    console.error('DATABASE_URL is missing. Run docker compose up -d first.');
     process.exit(1);
   }
 
-  if (!env.DATABASE_URL) {
-    console.error('DATABASE_URL is missing. Run docker compose up -d first.');
+  const putioToken = await getPutioAccessToken();
+  if (!putioToken) {
+    console.error(
+      'No Put.io token found. Set PUTIO_TOKEN in .env or save one at /configure.',
+    );
     process.exit(1);
   }
 
   console.log(dryRun ? 'Dry run — listing files only...' : 'Scanning Put.io library...');
 
   const result = await scanPutioLibrary({
-    putioToken: env.PUTIO_TOKEN,
+    putioToken,
     dryRun,
   });
 

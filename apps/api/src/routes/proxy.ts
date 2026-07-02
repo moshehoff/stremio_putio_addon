@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { createPutioProvider } from '@putio-stremio/putio-client';
+import { requirePutioAccessToken } from '@putio-stremio/db';
 import {
   ForbiddenError,
   NotFoundError,
-  requirePutioToken,
   requireSecretKey,
   verifyMp4ProxySignature,
   verifyProxySignature,
@@ -69,7 +69,7 @@ export async function registerProxyRoutes(app: FastifyInstance) {
       throw new ForbiddenError('Invalid or expired proxy signature');
     }
 
-    const putio = createPutioProvider(requirePutioToken());
+    const putio = createPutioProvider(await requirePutioAccessToken());
     const putioUrl = await putio.getDownloadUrl(putioFileId);
 
     return proxyPutioUrl(putioUrl, request, reply);
@@ -96,7 +96,7 @@ export async function registerProxyRoutes(app: FastifyInstance) {
       throw new ForbiddenError('Invalid or expired proxy signature');
     }
 
-    const putio = createPutioProvider(requirePutioToken());
+    const putio = createPutioProvider(await requirePutioAccessToken());
     const mp4 = await putio.getMp4PlaybackInfo(putioFileId, parentId);
 
     if (!mp4.available || !mp4.streamUrl) {

@@ -1,5 +1,4 @@
 import {
-  buildEpisodeStremioId,
   buildFolderCatalogId,
   buildFolderSeriesStremioId,
   parseFolderCatalogId,
@@ -242,7 +241,7 @@ export async function getFolderSeriesMeta(
   });
 
   const videos: StremioVideo[] = episodes.map((item) => ({
-    id: buildEpisodeStremioId(seriesKey, item.season!, item.episode!),
+    id: item.stremioId,
     title:
       item.files[0]?.name ??
       `S${pad2(item.season!)}E${pad2(item.episode!)}`,

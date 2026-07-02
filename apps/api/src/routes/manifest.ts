@@ -5,7 +5,7 @@ export async function registerManifestRoutes(app: FastifyInstance) {
   app.get('/manifest.json', async (_request, reply) => {
     const manifest = await buildManifest();
     return reply
-      .header('Cache-Control', 'public, max-age=3600')
+      .header('Cache-Control', 'public, max-age=300')
       .send(manifest);
   });
 }

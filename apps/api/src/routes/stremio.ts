@@ -12,7 +12,7 @@ import {
   parseCatalogExtra,
 } from '@putio-stremio/db';
 
-const CACHE_CATALOG = 'public, max-age=600';
+const CACHE_CATALOG = 'public, max-age=300';
 const CACHE_META = 'public, max-age=86400';
 
 export async function registerCatalogRoutes(app: FastifyInstance) {

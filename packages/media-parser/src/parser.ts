@@ -30,11 +30,20 @@ export function parseMediaFilename(filename: string): ParsedMedia {
   let season = parsed.season;
   let episode = parsed.episode;
 
+  let dashEpisodeTitle: string | undefined;
+
   if (season === undefined || episode === undefined) {
     const match = matchEpisode(baseName);
     if (match) {
       season = match.season;
       episode = match.episode;
+    } else {
+      const dash = matchDashEpisode(baseName);
+      if (dash) {
+        season = dash.season;
+        episode = dash.episode;
+        dashEpisodeTitle = dash.title;
+      }
     }
   }
 
@@ -42,7 +51,9 @@ export function parseMediaFilename(filename: string): ParsedMedia {
     parsed.resolution ?? baseName.match(RESOLUTION_PATTERN)?.[1]?.toLowerCase();
 
   if (season !== undefined && episode !== undefined) {
-    const showTitle = cleanTitle(parsed.title ?? extractShowTitle(baseName, season, episode));
+    const showTitle = cleanTitle(
+      dashEpisodeTitle ?? parsed.title ?? extractShowTitle(baseName, season, episode),
+    );
     return {
       kind: 'episode',
       title: showTitle,
@@ -102,6 +113,19 @@ export function buildEpisodeStremioId(
   episode: number,
 ): string {
   return `putio:series:${seriesKey}:${season}:${episode}`;
+}
+
+export function buildEpisodeFileStremioId(putioFileId: number): string {
+  return `putio:episode:${putioFileId}`;
+}
+
+export function parseEpisodeFileStremioId(id: string): number | null {
+  const match = id.match(/^putio:episode:(\d+)$/);
+  if (!match?.[1]) {
+    return null;
+  }
+  const putioFileId = Number.parseInt(match[1], 10);
+  return Number.isNaN(putioFileId) ? null : putioFileId;
 }
 
 export function buildFolderStremioId(parentId: number): string {
@@ -168,6 +192,26 @@ function matchEpisode(value: string): { season: number; episode: number } | null
   return null;
 }
 
+function matchDashEpisode(
+  value: string,
+): { season: number; episode: number; title: string } | null {
+  const match = value.match(/^(.+?)\s-\s*(\d{1,3})(?=\s*\[|\s|$|\.)/);
+  if (!match?.[1] || !match[2]) {
+    return null;
+  }
+
+  const episode = Number.parseInt(match[2], 10);
+  if (episode < 1 || episode > 999) {
+    return null;
+  }
+
+  return {
+    season: 1,
+    episode,
+    title: cleanTitle(match[1]),
+  };
+}
+
 function extractShowTitle(
   value: string,
   season: number,
@@ -177,6 +221,7 @@ function extractShowTitle(
     new RegExp(`^(.*?)\\.S${season}E${episode}\\b`, 'i'),
     new RegExp(`^(.*?)\\s+S${season}E${episode}\\b`, 'i'),
     new RegExp(`^(.*?)\\s+${season}x${episode}\\b`, 'i'),
+    new RegExp(`^(.*?)\\s-\\s*${episode}\\b`, 'i'),
   ];
 
   for (const pattern of patterns) {

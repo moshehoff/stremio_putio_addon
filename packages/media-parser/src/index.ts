@@ -1,5 +1,7 @@
 export {
+  buildEpisodeFileStremioId,
   buildEpisodeStremioId,
+  parseEpisodeFileStremioId,
   buildFolderCatalogId,
   buildFolderSeriesStremioId,
   buildFolderStremioId,

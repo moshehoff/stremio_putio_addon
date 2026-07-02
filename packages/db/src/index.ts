@@ -52,3 +52,10 @@ export {
   type ScanOptions,
   type ScanResult,
 } from './scan.js';
+export {
+  getPutioAccessToken,
+  hasPutioAccessToken,
+  requirePutioAccessToken,
+  savePutioAccessToken,
+  exchangeOAuthCode,
+} from './putio-token.js';

@@ -1,10 +1,10 @@
 import { createPutioProvider } from '@putio-stremio/putio-client';
 import type { ResolvedPutioFile } from '@putio-stremio/db';
+import { requirePutioAccessToken } from '@putio-stremio/db';
 import {
   buildMp4ProxyUrl,
   buildProxyUrl,
   isWebOsUserAgent,
-  requirePutioToken,
 } from '@putio-stremio/shared';
 
 export interface StremioStreamEntry {
@@ -47,7 +47,7 @@ export async function buildStremioStreams(
     return [originalStream];
   }
 
-  const putio = createPutioProvider(requirePutioToken());
+  const putio = createPutioProvider(await requirePutioAccessToken());
   const mp4 = await putio.getMp4PlaybackInfo(file.putioFileId, file.parentId);
 
   if (!mp4.available) {

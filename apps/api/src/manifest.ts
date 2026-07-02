@@ -55,7 +55,7 @@ export function folderCatalogDisplayName(folderName: string): string {
 export function buildManifestBase(): Omit<Manifest, 'catalogs'> {
   return {
     id: 'com.putio.library',
-    version: '0.8.0',
+    version: '0.9.0',
     name: 'Put.io Library',
     description:
       'Stream your Put.io cloud library in Stremio — one catalog per top-level folder.',
@@ -83,9 +83,15 @@ export function buildManifestBase(): Omit<Manifest, 'catalogs'> {
 
 export function buildManifestWithCatalogs(
   folders: Array<{ catalogId: string; name: string }>,
+  options: { configurationRequired?: boolean } = {},
 ): Manifest {
+  const base = buildManifestBase();
   return {
-    ...buildManifestBase(),
+    ...base,
+    behaviorHints: {
+      ...base.behaviorHints,
+      configurationRequired: options.configurationRequired ?? base.behaviorHints?.configurationRequired,
+    },
     catalogs: folders.map((folder) => ({
       type: 'series' as const,
       id: folder.catalogId,

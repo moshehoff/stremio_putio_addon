@@ -19,6 +19,7 @@ model User {
   media           Media[]
   seriesMeta      SeriesMeta[]
   scanRuns        ScanRun[]
+  oauthToken      OAuthToken?
 }
 
 model PutioFolder {
@@ -118,4 +119,15 @@ model ScanRun {
   errorMessage  String?
 
   @@index([userId, startedAt])
+}
+
+model OAuthToken {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

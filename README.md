@@ -1,14 +1,16 @@
 # Put.io → Stremio Addon
 
-Stream your Put.io library in Stremio.
+Stream your Put.io library in Stremio — **one catalog per top-level Put.io folder** (v0.8+).
+
+**Current addon version:** `0.9.0`
 
 ## Prerequisites
 
 - Node.js 22+
 - Docker Desktop
-- Put.io OAuth token (for M1+)
+- Put.io OAuth token (save via `/configure` — see below)
 
-## Quick start (M0)
+## Quick start
 
 ```bash
 # 1. Infrastructure
@@ -21,20 +23,24 @@ npm install
 npm run db:generate
 npm run db:push
 
-# 4. Scan Put.io library (M1)
+# 4. Connect Put.io (pick one)
+#    A) Open http://127.0.0.1:7000/configure and paste your OAuth token
+#    B) Optional fallback: PUTIO_TOKEN in .env
+
+# 5. Scan Put.io library
 npm run scan:dry    # list only, no DB write
 npm run scan        # save files to database
 
-# 5. Enrich metadata (M4) — requires TMDB_API_KEY in .env
+# 6. Enrich metadata — requires TMDB_API_KEY in .env
 npm run enrich
 
-# 6. Run API
+# 7. Run API
 npm run dev
 
-# 7. (Android) HTTPS tunnel — in a second terminal
+# 8. (Android) HTTPS tunnel — in a second terminal
 npm run tunnel
 
-# 8. Tests
+# 9. Tests
 npm test
 ```
 
@@ -42,8 +48,17 @@ npm test
 
 | URL | Description |
 |-----|-------------|
-| `http://127.0.0.1:7000/manifest.json` | Stremio addon manifest (Desktop) |
+| `http://127.0.0.1:7000/manifest.json` | Stremio addon manifest (dynamic — one catalog per top-level folder) |
+| `http://127.0.0.1:7000/configure` | Connect Put.io (paste token or OAuth) |
 | `http://127.0.0.1:7000/health` | Health check + Android install URL |
+
+## v0.9.0 highlights
+
+- **BlazeAnime parser** — `One Punch Man - 01 [1080p]...` style filenames
+- **Unique episode IDs** — `putio:episode:{fileId}` (no duplicate SxxExx collisions)
+- **Shorter cache** — manifest & catalog refresh every 5 minutes
+- **Auto-scan** — `AUTO_SCAN_INTERVAL_MINUTES=5` (set `0` to disable)
+- **OAuth / configure** — token stored encrypted in DB; `PUTIO_TOKEN` in `.env` is optional fallback only
 
 ## Install in Stremio
 
@@ -82,15 +97,25 @@ LAN install only works if your Stremio version allows HTTP on local IPs:
 2. Open `http://127.0.0.1:7000/health` — copy `install.android`
 3. Same Wi‑Fi as PC; allow Windows Firewall port **7000**
 
+## CLI helpers
+
+| Command | Description |
+|---------|-------------|
+| `npm run scan` | Full Put.io scan + parse |
+| `npm run unmatched` | List unmatched files |
+| `npx tsx apps/cli/src/save-token.ts` | Migrate token from `.env` to DB |
+| `npx tsx apps/cli/src/list-catalogs.ts` | List catalogs + folder paths |
+
 ## Project structure
 
 ```
 apps/api/          Fastify + Stremio routes
-packages/shared/   Config, logger, errors
+packages/shared/   Config, logger, errors, token crypto
+packages/db/       Scan, parse, folder catalogs, OAuth token
 prisma/            Database schema
-docs/SDD-FULL.md   Full specification
+docs/SDD-FULL.md   Full specification + implementation changelog
 ```
 
 ## Roadmap
 
-See `docs/SDD-FULL.md` — MVP: series catalog + play on Android (M0–M3).
+See `docs/SDD-FULL.md` — M7 (OAuth/configure) partially done in v0.9.0.

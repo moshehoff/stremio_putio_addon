@@ -20,6 +20,7 @@ const envSchema = z.object({
   PUTIO_CLIENT_SECRET: z.string().optional(),
   TMDB_API_KEY: z.string().optional(),
   SECRET_KEY: z.string().optional(),
+  AUTO_SCAN_INTERVAL_MINUTES: z.coerce.number().int().min(0).default(5),
 });
 
 export type Env = z.infer<typeof envSchema>;
