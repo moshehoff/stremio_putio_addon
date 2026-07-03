@@ -23,6 +23,7 @@ export {
 } from './parse.js';
 export {
   enrichLibraryMetadata,
+  enrichIfConfigured,
   type EnrichResult,
   type EnrichProgress,
   type EnrichOptions,

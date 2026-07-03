@@ -36,6 +36,10 @@ export function startAutoScan(): void {
           username: result.username,
           filesFound: result.filesFound,
           filesUpserted: result.filesUpserted,
+          enrichMovies: result.enrich?.moviesMatched,
+          enrichCached: result.enrich
+            ? result.enrich.moviesSkipped + result.enrich.unmatchedSkipped
+            : undefined,
         },
         'Auto-scan completed',
       );

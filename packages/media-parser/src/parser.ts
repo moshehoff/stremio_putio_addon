@@ -29,21 +29,18 @@ export function parseMediaFilename(filename: string): ParsedMedia {
 
   let season = parsed.season;
   let episode = parsed.episode;
-
   let dashEpisodeTitle: string | undefined;
 
-  if (season === undefined || episode === undefined) {
+  const dash = matchDashEpisode(baseName);
+  if (dash) {
+    season = dash.season;
+    episode = dash.episode;
+    dashEpisodeTitle = dash.title;
+  } else if (season === undefined || episode === undefined) {
     const match = matchEpisode(baseName);
     if (match) {
       season = match.season;
       episode = match.episode;
-    } else {
-      const dash = matchDashEpisode(baseName);
-      if (dash) {
-        season = dash.season;
-        episode = dash.episode;
-        dashEpisodeTitle = dash.title;
-      }
     }
   }
 

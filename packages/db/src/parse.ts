@@ -1,6 +1,7 @@
 import {
   buildEpisodeFileStremioId,
   parseMediaFilename,
+  type ParsedMedia,
 } from '@putio-stremio/media-parser';
 import { createLogger } from '@putio-stremio/shared';
 import { prisma } from './client.js';
@@ -13,6 +14,38 @@ export interface ParseResult {
   episodes: number;
   movies: number;
   unmatched: number;
+}
+
+function resolveMetadataStatus(
+  parsed: ParsedMedia,
+  existing: {
+    kind: string;
+    title: string;
+    seriesKey: string | null;
+    year: number | null;
+    metadataStatus: string;
+    posterPath: string | null;
+  } | null,
+): string {
+  if (!existing) {
+    return parsed.kind === 'unmatched' ? 'unknown' : 'pending';
+  }
+
+  const identityChanged =
+    existing.kind !== parsed.kind ||
+    existing.title !== parsed.title ||
+    existing.seriesKey !== (parsed.seriesKey ?? null) ||
+    existing.year !== (parsed.year ?? null);
+
+  if (identityChanged) {
+    return parsed.kind === 'unmatched' ? 'unknown' : 'pending';
+  }
+
+  if (existing.metadataStatus === 'matched' || existing.metadataStatus === 'failed') {
+    return existing.metadataStatus;
+  }
+
+  return parsed.kind === 'unmatched' ? 'unknown' : 'pending';
 }
 
 export async function parseMediaForUser(userId: string): Promise<ParseResult> {
@@ -28,6 +61,10 @@ export async function parseMediaForUser(userId: string): Promise<ParseResult> {
 
   for (const file of files) {
     const parsed = parseMediaFilename(file.name);
+    const existingMedia = file.mediaId
+      ? await prisma.media.findUnique({ where: { id: file.mediaId } })
+      : null;
+
     let stremioId: string;
     let seriesKey: string | null = null;
     let season: number | null = null;
@@ -48,6 +85,8 @@ export async function parseMediaForUser(userId: string): Promise<ParseResult> {
       unmatched += 1;
     }
 
+    const metadataStatus = resolveMetadataStatus(parsed, existingMedia);
+
     const media = await prisma.media.upsert({
       where: {
         userId_stremioId: {
@@ -65,7 +104,7 @@ export async function parseMediaForUser(userId: string): Promise<ParseResult> {
         episode,
         year: parsed.year ?? null,
         resolution: parsed.resolution ?? null,
-        metadataStatus: parsed.kind === 'unmatched' ? 'unknown' : 'pending',
+        metadataStatus,
       },
       update: {
         title: parsed.title,
@@ -74,6 +113,7 @@ export async function parseMediaForUser(userId: string): Promise<ParseResult> {
         episode,
         year: parsed.year ?? null,
         resolution: parsed.resolution ?? null,
+        metadataStatus,
       },
     });
 

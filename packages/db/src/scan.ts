@@ -12,6 +12,7 @@ import {
   getLibrarySummary,
   type LibrarySummary,
 } from './library-summary.js';
+import { enrichIfConfigured, type EnrichResult } from './enrich.js';
 
 const log = createLogger('indexer');
 
@@ -23,6 +24,7 @@ export interface ScanResult {
   scanRunId: string;
   parse?: ParseResult;
   library?: LibrarySummary;
+  enrich?: EnrichResult | null;
 }
 
 export interface ScanOptions {
@@ -53,6 +55,7 @@ export async function scanPutioLibrary(
     let filesUpserted = 0;
     let parse: ParseResult | undefined;
     let library: LibrarySummary | undefined;
+    let enrich: EnrichResult | null | undefined;
 
     if (!options.dryRun) {
       await removeInvalidPutioFiles(user.id);
@@ -75,6 +78,19 @@ export async function scanPutioLibrary(
       await assignRootFoldersToFiles(user.id);
       parse = await parseMediaForUser(user.id);
       library = await getLibrarySummary(user.id);
+      enrich = await enrichIfConfigured();
+      if (enrich) {
+        log.info(
+          {
+            seriesMatched: enrich.seriesMatched,
+            moviesMatched: enrich.moviesMatched,
+            unmatchedMatched: enrich.unmatchedMatched,
+            moviesSkipped: enrich.moviesSkipped,
+            unmatchedSkipped: enrich.unmatchedSkipped,
+          },
+          'Post-scan metadata enrichment completed',
+        );
+      }
     }
 
     if (scanRun) {
@@ -97,6 +113,7 @@ export async function scanPutioLibrary(
       scanRunId: scanRun?.id ?? 'dry-run',
       parse,
       library,
+      enrich,
     };
   } catch (error) {
     if (scanRun) {

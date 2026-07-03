@@ -29,13 +29,13 @@ async function main() {
 
   console.log('');
   console.log(
-    `Series: ${result.seriesMatched} matched, ${result.seriesFailed} failed`,
+    `Series: ${result.seriesMatched} matched, ${result.seriesFailed} failed (${result.seriesSkipped} cached)`,
   );
   console.log(
-    `Movies: ${result.moviesMatched} matched, ${result.moviesFailed} failed`,
+    `Movies: ${result.moviesMatched} matched, ${result.moviesFailed} failed (${result.moviesSkipped} cached)`,
   );
   console.log(
-    `Unmatched: ${result.unmatchedMatched} posters found, ${result.unmatchedFailed} failed`,
+    `Unmatched: ${result.unmatchedMatched} posters, ${result.unmatchedFailed} failed (${result.unmatchedSkipped} cached)`,
   );
   console.log('Done.');
 }

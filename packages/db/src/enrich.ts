@@ -1,20 +1,26 @@
 import type { TmdbSearchResult } from '@putio-stremio/tmdb-client';
 import { createTmdbProvider, withTmdbThrottle } from '@putio-stremio/tmdb-client';
 import { guessTitleYearForPosterLookup } from '@putio-stremio/media-parser';
-import { createLogger, requireTmdbApiKey } from '@putio-stremio/shared';
+import { createLogger, getEnv, requireTmdbApiKey } from '@putio-stremio/shared';
 import { prisma } from './client.js';
 import { getDefaultUser } from './parse.js';
 import { yearFromDate } from './posters.js';
 
 const log = createLogger('enrich');
 
+const PENDING_STATUSES = ['pending', 'unknown'] as const;
+const SETTLED_STATUSES = ['matched', 'failed'] as const;
+
 export interface EnrichResult {
   seriesMatched: number;
   seriesFailed: number;
+  seriesSkipped: number;
   moviesMatched: number;
   moviesFailed: number;
+  moviesSkipped: number;
   unmatchedMatched: number;
   unmatchedFailed: number;
+  unmatchedSkipped: number;
 }
 
 export interface EnrichProgress {
@@ -27,15 +33,24 @@ export interface EnrichProgress {
 
 export interface EnrichOptions {
   onProgress?: (progress: EnrichProgress) => void;
+  quiet?: boolean;
 }
 
 function report(
   options: EnrichOptions | undefined,
   progress: EnrichProgress,
 ): void {
+  if (options?.quiet) {
+    return;
+  }
   options?.onProgress?.(progress);
 }
 
+function isSettledStatus(status: string): boolean {
+  return (SETTLED_STATUSES as readonly string[]).includes(status);
+}
+
+/** Enrich only items not already matched or failed in the DB. */
 export async function enrichLibraryMetadata(
   options?: EnrichOptions,
 ): Promise<EnrichResult> {
@@ -47,10 +62,13 @@ export async function enrichLibraryMetadata(
   const tmdb = createTmdbProvider(requireTmdbApiKey());
   let seriesMatched = 0;
   let seriesFailed = 0;
+  let seriesSkipped = 0;
   let moviesMatched = 0;
   let moviesFailed = 0;
+  let moviesSkipped = 0;
   let unmatchedMatched = 0;
   let unmatchedFailed = 0;
+  let unmatchedSkipped = 0;
 
   const episodes = await prisma.media.findMany({
     where: {
@@ -78,46 +96,54 @@ export async function enrichLibraryMetadata(
     }
   }
 
-  const seriesList = [...seriesMap.entries()];
+  const allSeriesKeys = [...seriesMap.keys()];
+  const existingSeriesMeta =
+    allSeriesKeys.length > 0
+      ? await prisma.seriesMeta.findMany({
+          where: {
+            userId: user.id,
+            seriesKey: { in: allSeriesKeys },
+          },
+        })
+      : [];
+  const seriesMetaByKey = new Map(
+    existingSeriesMeta.map((row) => [row.seriesKey, row]),
+  );
+
+  const seriesToEnrich = allSeriesKeys
+    .map((seriesKey) => {
+      const info = seriesMap.get(seriesKey)!;
+      const existing = seriesMetaByKey.get(seriesKey);
+      if (existing && isSettledStatus(existing.metadataStatus)) {
+        if (existing.metadataStatus === 'matched') {
+          seriesMatched += 1;
+        } else {
+          seriesFailed += 1;
+        }
+        seriesSkipped += 1;
+        return null;
+      }
+      return { seriesKey, info };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
 
   report(options, {
     phase: 'series',
     current: 0,
-    total: seriesList.length,
-    label: `starting (${seriesList.length} series)`,
+    total: seriesToEnrich.length,
+    label: `starting (${seriesToEnrich.length} pending, ${seriesSkipped} cached)`,
     status: 'pending',
   });
 
-  for (let i = 0; i < seriesList.length; i += 1) {
-    const [seriesKey, info] = seriesList[i]!;
+  for (let i = 0; i < seriesToEnrich.length; i += 1) {
+    const { seriesKey, info } = seriesToEnrich[i]!;
     report(options, {
       phase: 'series',
       current: i + 1,
-      total: seriesList.length,
+      total: seriesToEnrich.length,
       label: info.title,
       status: 'pending',
     });
-
-    const existing = await prisma.seriesMeta.findUnique({
-      where: {
-        userId_seriesKey: {
-          userId: user.id,
-          seriesKey,
-        },
-      },
-    });
-
-    if (existing?.metadataStatus === 'matched' && existing.imdbId) {
-      seriesMatched += 1;
-      report(options, {
-        phase: 'series',
-        current: i + 1,
-        total: seriesList.length,
-        label: info.title,
-        status: 'skip',
-      });
-      continue;
-    }
 
     try {
       const search = await withTmdbThrottle(() =>
@@ -142,7 +168,7 @@ export async function enrichLibraryMetadata(
         report(options, {
           phase: 'series',
           current: i + 1,
-          total: seriesList.length,
+          total: seriesToEnrich.length,
           label: info.title,
           status: 'fail',
         });
@@ -183,7 +209,7 @@ export async function enrichLibraryMetadata(
       report(options, {
         phase: 'series',
         current: i + 1,
-        total: seriesList.length,
+        total: seriesToEnrich.length,
         label: info.title,
         status: 'ok',
       });
@@ -193,17 +219,33 @@ export async function enrichLibraryMetadata(
       report(options, {
         phase: 'series',
         current: i + 1,
-        total: seriesList.length,
+        total: seriesToEnrich.length,
         label: info.title,
         status: 'fail',
       });
     }
   }
 
+  moviesSkipped = await prisma.media.count({
+    where: {
+      userId: user.id,
+      kind: 'movie',
+      metadataStatus: { in: [...SETTLED_STATUSES] },
+    },
+  });
+  moviesMatched = await prisma.media.count({
+    where: {
+      userId: user.id,
+      kind: 'movie',
+      metadataStatus: 'matched',
+    },
+  });
+
   const movies = await prisma.media.findMany({
     where: {
       userId: user.id,
       kind: 'movie',
+      metadataStatus: { in: [...PENDING_STATUSES] },
     },
   });
 
@@ -211,26 +253,12 @@ export async function enrichLibraryMetadata(
     phase: 'movies',
     current: 0,
     total: movies.length,
-    label: `starting (${movies.length} movies)`,
+    label: `starting (${movies.length} pending, ${moviesSkipped} cached)`,
     status: 'pending',
   });
 
   for (let i = 0; i < movies.length; i += 1) {
     const movie = movies[i]!;
-    if (movie.metadataStatus === 'matched' && movie.posterPath && movie.imdbId) {
-      moviesMatched += 1;
-      if ((i + 1) % 25 === 0 || i + 1 === movies.length) {
-        report(options, {
-          phase: 'movies',
-          current: i + 1,
-          total: movies.length,
-          label: movie.title,
-          status: 'skip',
-        });
-      }
-      continue;
-    }
-
     report(options, {
       phase: 'movies',
       current: i + 1,
@@ -298,10 +326,26 @@ export async function enrichLibraryMetadata(
     }
   }
 
+  unmatchedSkipped = await prisma.media.count({
+    where: {
+      userId: user.id,
+      kind: 'unmatched',
+      metadataStatus: { in: [...SETTLED_STATUSES] },
+    },
+  });
+  unmatchedMatched = await prisma.media.count({
+    where: {
+      userId: user.id,
+      kind: 'unmatched',
+      metadataStatus: 'matched',
+    },
+  });
+
   const unmatched = await prisma.media.findMany({
     where: {
       userId: user.id,
       kind: 'unmatched',
+      metadataStatus: { in: [...PENDING_STATUSES] },
     },
     include: {
       files: {
@@ -315,7 +359,7 @@ export async function enrichLibraryMetadata(
     phase: 'unmatched',
     current: 0,
     total: unmatched.length,
-    label: `starting (${unmatched.length} unmatched)`,
+    label: `starting (${unmatched.length} pending, ${unmatchedSkipped} cached)`,
     status: 'pending',
   });
 
@@ -329,18 +373,6 @@ export async function enrichLibraryMetadata(
       label: filename,
       status: 'pending',
     });
-
-    if (item.metadataStatus === 'matched' && item.posterPath) {
-      unmatchedMatched += 1;
-      report(options, {
-        phase: 'unmatched',
-        current: i + 1,
-        total: unmatched.length,
-        label: filename,
-        status: 'skip',
-      });
-      continue;
-    }
 
     const { title, year } = guessTitleYearForPosterLookup(filename);
     if (title.length < 2) {
@@ -436,10 +468,13 @@ export async function enrichLibraryMetadata(
     {
       seriesMatched,
       seriesFailed,
+      seriesSkipped,
       moviesMatched,
       moviesFailed,
+      moviesSkipped,
       unmatchedMatched,
       unmatchedFailed,
+      unmatchedSkipped,
     },
     'Metadata enrichment completed',
   );
@@ -447,11 +482,24 @@ export async function enrichLibraryMetadata(
   return {
     seriesMatched,
     seriesFailed,
+    seriesSkipped,
     moviesMatched,
     moviesFailed,
+    moviesSkipped,
     unmatchedMatched,
     unmatchedFailed,
+    unmatchedSkipped,
   };
+}
+
+/** Run enrich when TMDB_API_KEY is set; no-op otherwise. */
+export async function enrichIfConfigured(
+  options?: EnrichOptions,
+): Promise<EnrichResult | null> {
+  if (!getEnv().TMDB_API_KEY) {
+    return null;
+  }
+  return enrichLibraryMetadata({ quiet: true, ...options });
 }
 
 async function pickBestTmdbMatch(
@@ -462,7 +510,9 @@ async function pickBestTmdbMatch(
   const movieHit = await withTmdbThrottle(() =>
     tmdb.searchMovie(title, year),
   );
-  const tvHit = await withTmdbThrottle(() => tmdb.searchTv(title, year));
+  const tvHit = await withTmdbThrottle(() =>
+    tmdb.searchTv(title, year),
+  );
 
   const movieScore = posterScore(movieHit);
   const tvScore = posterScore(tvHit);

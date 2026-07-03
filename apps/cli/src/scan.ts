@@ -52,6 +52,13 @@ async function main() {
     if (result.library) {
       console.log(formatLibrarySummary(result.library));
     }
+
+    if (result.enrich) {
+      console.log('');
+      console.log(
+        `Enrich:   ${result.enrich.moviesMatched} movies, ${result.enrich.unmatchedMatched} unmatched posters (${result.enrich.moviesSkipped + result.enrich.unmatchedSkipped} cached)`,
+      );
+    }
   }
 }
 
