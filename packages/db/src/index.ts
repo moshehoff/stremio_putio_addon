@@ -17,6 +17,14 @@ export {
   type ResolvedPutioFile,
 } from './stream.js';
 export {
+  filterRelevantPutioSubtitles,
+  getPutioSubtitlesForResolvedFile,
+  getPutioSubtitlesForFile,
+  getPutioSubtitlesForVideo,
+  mapPutioLanguageToStremio,
+  type StremioSubtitleEntry,
+} from './subtitles.js';
+export {
   getDefaultUser,
   getUserBySlug,
   parseMediaForUser,

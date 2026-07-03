@@ -146,7 +146,7 @@ export async function getFolderMediaCatalog(
       metas.push({
         id: row.stremioId,
         type: 'movie',
-        name: row.files[0]!.name,
+        name: row.title,
         poster: resolvePosterUrl(row.posterPath),
         releaseInfo: row.year ? String(row.year) : undefined,
       });

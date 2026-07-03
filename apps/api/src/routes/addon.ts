@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { NotFoundError, normalizeBaseUrl } from '@putio-stremio/shared';
 import {
   parseFolderCatalogId,
@@ -19,11 +19,13 @@ import {
   resolveRequestBaseUrl,
 } from '@putio-stremio/shared';
 import { buildStremioStreams } from '../services/streams.js';
+import { buildStremioSubtitles } from '../services/subtitles.js';
 import { buildManifest } from '../manifest-builder.js';
 
 const CACHE_CATALOG = 'public, max-age=300';
 const CACHE_META = 'public, max-age=86400';
 const CACHE_STREAM = 'public, max-age=300';
+const CACHE_SUBTITLES = 'public, max-age=86400';
 const CACHE_MANIFEST = 'public, max-age=300';
 
 type RequestWithUser = FastifyRequest & { libraryUserId?: string };
@@ -63,8 +65,72 @@ function streamBaseUrl(
 ): string {
   const env = getEnv();
   return normalizeBaseUrl(
-    `${resolveRequestBaseUrl(request, env.BASE_URL)}${pathPrefix}`,
+    `${resolveRequestBaseUrl(request, env.BASE_URL, {
+      publicBaseUrl: env.PUBLIC_BASE_URL,
+    })}${pathPrefix}`,
   );
+}
+
+async function buildStreams(
+  request: FastifyRequest,
+  videoId: string,
+  userId: string,
+  pathPrefix = '',
+) {
+  const secret = requireSecretKey();
+  const file = await resolveVideoToPutioFile(videoId, userId);
+  return buildStremioStreams(
+    file,
+    streamBaseUrl(request, pathPrefix),
+    secret,
+    typeof request.headers['user-agent'] === 'string'
+      ? request.headers['user-agent']
+      : undefined,
+    userId,
+  );
+}
+
+async function buildSubtitles(
+  request: FastifyRequest,
+  videoId: string,
+  userId: string,
+  pathPrefix = '',
+) {
+  const secret = requireSecretKey();
+  return buildStremioSubtitles(
+    decodeURIComponent(videoId),
+    userId,
+    streamBaseUrl(request, pathPrefix),
+    secret,
+  );
+}
+
+async function handleSubtitlesRequest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  options: {
+    type: string;
+    videoId: string;
+    userId: string | undefined;
+    pathPrefix?: string;
+  },
+) {
+  const { type, videoId, userId, pathPrefix = '' } = options;
+  const id = decodeURIComponent(videoId);
+
+  if (type !== 'series' && type !== 'movie') {
+    throw new NotFoundError('Unsupported subtitles type');
+  }
+  if (!id.startsWith('putio:')) {
+    throw new NotFoundError('Unsupported video id');
+  }
+
+  if (!userId) {
+    return reply.header('Cache-Control', CACHE_SUBTITLES).send({ subtitles: [] });
+  }
+
+  const subtitles = await buildSubtitles(request, id, userId, pathPrefix);
+  return reply.header('Cache-Control', CACHE_SUBTITLES).send({ subtitles });
 }
 
 export async function registerDefaultAddonRoutes(app: FastifyInstance) {
@@ -128,19 +194,28 @@ export async function registerDefaultAddonRoutes(app: FastifyInstance) {
       throw new NotFoundError('No library user');
     }
 
-    const secret = requireSecretKey();
-    const file = await resolveVideoToPutioFile(videoId, userId);
-    const streams = await buildStremioStreams(
-      file,
-      streamBaseUrl(request),
-      secret,
-      typeof request.headers['user-agent'] === 'string'
-        ? request.headers['user-agent']
-        : undefined,
-    );
-
+    const streams = await buildStreams(request, videoId, userId);
     return reply.header('Cache-Control', CACHE_STREAM).send({ streams });
   });
+
+  const defaultSubtitles = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) => {
+    const { type, videoId } = request.params as {
+      type: string;
+      videoId: string;
+    };
+    return handleSubtitlesRequest(request, reply, {
+      type,
+      videoId,
+      userId: await resolveLibraryUserId(),
+    });
+  };
+
+  // Stremio desktop sends extras: /subtitles/movie/{id}/filename=…&videoSize=….json
+  app.get('/subtitles/:type/:videoId.json', defaultSubtitles);
+  app.get('/subtitles/:type/:videoId/:extra.json', defaultSubtitles);
 }
 
 export async function registerPerUserAddonRoutes(app: FastifyInstance) {
@@ -211,18 +286,34 @@ export async function registerPerUserAddonRoutes(app: FastifyInstance) {
       }
 
       const userId = (request as RequestWithUser).libraryUserId!;
-      const secret = requireSecretKey();
-      const file = await resolveVideoToPutioFile(videoId, userId);
-      const streams = await buildStremioStreams(
-        file,
-        streamBaseUrl(request, `/u/${userSlug}`),
-        secret,
-        typeof request.headers['user-agent'] === 'string'
-          ? request.headers['user-agent']
-          : undefined,
+      const streams = await buildStreams(
+        request,
+        videoId,
+        userId,
+        `/u/${userSlug}`,
       );
 
       return reply.header('Cache-Control', CACHE_STREAM).send({ streams });
     });
+
+    const perUserSubtitles = async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => {
+      const { userSlug, type, videoId } = request.params as {
+        userSlug: string;
+        type: string;
+        videoId: string;
+      };
+      return handleSubtitlesRequest(request, reply, {
+        type,
+        videoId,
+        userId: (request as RequestWithUser).libraryUserId,
+        pathPrefix: `/u/${userSlug}`,
+      });
+    };
+
+    userApp.get('/subtitles/:type/:videoId.json', perUserSubtitles);
+    userApp.get('/subtitles/:type/:videoId/:extra.json', perUserSubtitles);
   }, { prefix: '/u/:userSlug' });
 }

@@ -21,20 +21,49 @@ function isLoopbackHost(host: string): boolean {
   );
 }
 
+function resolveProto(
+  host: string,
+  request: {
+    headers: Record<string, string | string[] | undefined>;
+    protocol?: string;
+  },
+): string {
+  const forwardedProto = headerValue(request.headers['x-forwarded-proto']);
+  if (forwardedProto) {
+    return forwardedProto;
+  }
+
+  const hostname = host.split(':')[0]?.toLowerCase() ?? '';
+  if (hostname.endsWith('.trycloudflare.com')) {
+    return 'https';
+  }
+
+  return request.protocol ?? 'http';
+}
+
+export interface ResolveRequestBaseUrlOptions {
+  publicBaseUrl?: string;
+}
+
 export function resolveRequestBaseUrl(
   request: {
     headers: Record<string, string | string[] | undefined>;
     protocol?: string;
   },
   fallbackBaseUrl: string,
+  options: ResolveRequestBaseUrlOptions = {},
 ): string {
   const forwardedHost = headerValue(request.headers['x-forwarded-host']);
   const host = forwardedHost ?? headerValue(request.headers.host);
 
   if (host && !isLoopbackHost(host)) {
-    const forwardedProto = headerValue(request.headers['x-forwarded-proto']);
-    const proto = forwardedProto ?? request.protocol ?? 'http';
+    const proto = resolveProto(host, request);
     return normalizeBaseUrl(`${proto}://${host}`);
+  }
+
+  const publicBaseUrl = options.publicBaseUrl?.trim();
+  if (publicBaseUrl) {
+    return normalizeBaseUrl(publicBaseUrl);
   }
 
   return normalizeBaseUrl(fallbackBaseUrl);

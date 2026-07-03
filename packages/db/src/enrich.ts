@@ -1,9 +1,14 @@
 import type { TmdbSearchResult } from '@putio-stremio/tmdb-client';
 import { createTmdbProvider, withTmdbThrottle } from '@putio-stremio/tmdb-client';
-import { guessTitleYearForPosterLookup } from '@putio-stremio/media-parser';
+import {
+  guessTitleYearForPosterLookup,
+  guessTitleYearFromFolderName,
+  isGibberishFilename,
+} from '@putio-stremio/media-parser';
 import { createLogger, getEnv, requireTmdbApiKey } from '@putio-stremio/shared';
 import { prisma } from './client.js';
 import { getDefaultUser } from './parse.js';
+import { getFolderName } from './folders.js';
 import { yearFromDate } from './posters.js';
 
 const log = createLogger('enrich');
@@ -350,7 +355,7 @@ export async function enrichLibraryMetadata(
     include: {
       files: {
         take: 1,
-        select: { name: true },
+        select: { name: true, parentId: true },
       },
     },
   });
@@ -366,6 +371,7 @@ export async function enrichLibraryMetadata(
   for (let i = 0; i < unmatched.length; i += 1) {
     const item = unmatched[i]!;
     const filename = item.files[0]?.name ?? item.title;
+    const parentId = item.files[0]?.parentId;
     report(options, {
       phase: 'unmatched',
       current: i + 1,
@@ -374,7 +380,19 @@ export async function enrichLibraryMetadata(
       status: 'pending',
     });
 
-    const { title, year } = guessTitleYearForPosterLookup(filename);
+    let { title, year } = guessTitleYearForPosterLookup(filename);
+    if (
+      isGibberishFilename(filename) &&
+      parentId &&
+      parentId > 0
+    ) {
+      const parentFolderName = await getFolderName(user.id, parentId);
+      const fromFolder = guessTitleYearFromFolderName(parentFolderName);
+      if (fromFolder.title.length >= 2) {
+        title = fromFolder.title;
+        year = fromFolder.year ?? year;
+      }
+    }
     if (title.length < 2) {
       await prisma.media.update({
         where: { id: item.id },

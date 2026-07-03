@@ -11,6 +11,9 @@ export {
   parseFolderStremioId,
   parseMediaFilename,
   guessTitleYearForPosterLookup,
+  guessTitleYearFromFolderName,
+  isGibberishFilename,
+  resolveMediaWithFolderFallback,
   slugify,
 } from './parser.js';
 export type { MediaKind, ParsedMedia } from './types.js';

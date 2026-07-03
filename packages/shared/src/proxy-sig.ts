@@ -99,3 +99,54 @@ export function buildMp4ProxyUrl(
   url.searchParams.set('sig', sig);
   return url.toString();
 }
+
+export function signSubtitleProxyRequest(
+  fileId: number,
+  subtitleKey: string,
+  exp: number,
+  secret: string,
+): string {
+  return createHmac('sha256', secret)
+    .update(`sub:${fileId}:${subtitleKey}:${exp}`)
+    .digest('hex');
+}
+
+export function verifySubtitleProxySignature(
+  fileId: number,
+  subtitleKey: string,
+  exp: number,
+  sig: string,
+  secret: string,
+): boolean {
+  if (!Number.isFinite(exp) || exp <= Math.floor(Date.now() / 1000)) {
+    return false;
+  }
+
+  const expected = signSubtitleProxyRequest(fileId, subtitleKey, exp, secret);
+  const sigBuf = Buffer.from(sig, 'hex');
+  const expectedBuf = Buffer.from(expected, 'hex');
+
+  if (sigBuf.length !== expectedBuf.length) {
+    return false;
+  }
+
+  return timingSafeEqual(sigBuf, expectedBuf);
+}
+
+export function buildSubtitleProxyUrl(
+  baseUrl: string,
+  fileId: number,
+  subtitleKey: string,
+  secret: string,
+  ttlSeconds?: number,
+): string {
+  const exp = createProxyExpiry(ttlSeconds);
+  const sig = signSubtitleProxyRequest(fileId, subtitleKey, exp, secret);
+  const url = new URL(
+    `/v1/subtitles/${fileId}/${encodeURIComponent(subtitleKey)}.vtt`,
+    baseUrl,
+  );
+  url.searchParams.set('exp', String(exp));
+  url.searchParams.set('sig', sig);
+  return url.toString();
+}

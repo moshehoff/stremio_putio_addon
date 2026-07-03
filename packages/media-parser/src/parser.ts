@@ -121,6 +121,79 @@ export function guessTitleYearForPosterLookup(filename: string): {
   return year ? { title, year } : { title };
 }
 
+/** True when the filename alone is not useful for title/poster (e.g. flhd-pap.mkv). */
+export function isGibberishFilename(filename: string): boolean {
+  const parsed = parseMediaFilename(filename);
+  if (parsed.kind !== 'unmatched') {
+    return false;
+  }
+
+  const { title, year } = guessTitleYearForPosterLookup(filename);
+  if (year) {
+    return false;
+  }
+
+  const words = title.split(/\s+/).filter((word) => word.length > 1);
+  if (words.length >= 2) {
+    return false;
+  }
+
+  return title.length < 20;
+}
+
+/** Parse a Put.io parent folder name into title/year (e.g. Pride.And.Prejudice.2005...). */
+export function guessTitleYearFromFolderName(folderName: string): {
+  title: string;
+  year?: number;
+} {
+  const normalized = folderName.replace(/[._]+/g, ' ');
+  const parsed = parseMediaFilename(`${normalized}.mkv`);
+  if (parsed.kind === 'movie' || parsed.kind === 'episode') {
+    return {
+      title: parsed.title,
+      year: parsed.year,
+    };
+  }
+
+  return guessTitleYearForPosterLookup(`${normalized}.mkv`);
+}
+
+/** When filename is gibberish, derive movie/episode metadata from the parent folder name. */
+export function resolveMediaWithFolderFallback(
+  filename: string,
+  parentFolderName?: string | null,
+): ParsedMedia {
+  const parsed = parseMediaFilename(filename);
+  if (parsed.kind !== 'unmatched' || !parentFolderName?.trim()) {
+    return parsed;
+  }
+  if (!isGibberishFilename(filename)) {
+    return parsed;
+  }
+
+  const normalized = parentFolderName.replace(/[._]+/g, ' ');
+  const fromFolder = parseMediaFilename(`${normalized}.mkv`);
+  if (fromFolder.kind === 'movie') {
+    return fromFolder;
+  }
+  if (fromFolder.kind === 'episode') {
+    return fromFolder;
+  }
+
+  const lookup = guessTitleYearFromFolderName(parentFolderName);
+  if (lookup.title.length < 2) {
+    return parsed;
+  }
+
+  return {
+    kind: 'movie',
+    title: lookup.title,
+    year: lookup.year,
+    seriesKey: slugify(lookup.title),
+    rawTitle: filename,
+  };
+}
+
 export function slugify(value: string): string {
   return value
     .toLowerCase()

@@ -12,6 +12,8 @@ import {
   parseFolderStremioId,
   parseMediaFilename,
   guessTitleYearForPosterLookup,
+  isGibberishFilename,
+  resolveMediaWithFolderFallback,
 } from '../src/parser.js';
 
 describe('parseMediaFilename', () => {
@@ -70,6 +72,21 @@ describe('parseMediaFilename', () => {
   it('marks unknown files as unmatched', () => {
     const result = parseMediaFilename('random_clip.mp4');
     expect(result.kind).toBe('unmatched');
+  });
+
+  it('detects gibberish release filenames', () => {
+    expect(isGibberishFilename('flhd-pap.mkv')).toBe(true);
+    expect(isGibberishFilename('Pride and Prejudice 2005.mkv')).toBe(false);
+  });
+
+  it('resolves gibberish filenames from parent folder name', () => {
+    const result = resolveMediaWithFolderFallback(
+      'flhd-pap.mkv',
+      'Pride.And.Prejudice.2005.1080p.BluRay.x264-FLHD',
+    );
+    expect(result.kind).toBe('movie');
+    expect(result.title).toBe('Pride And Prejudice');
+    expect(result.year).toBe(2005);
   });
 });
 

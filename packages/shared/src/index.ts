@@ -16,11 +16,14 @@ export {
 export {
   buildProxyUrl,
   buildMp4ProxyUrl,
+  buildSubtitleProxyUrl,
   createProxyExpiry,
   signProxyRequest,
   signMp4ProxyRequest,
+  signSubtitleProxyRequest,
   verifyProxySignature,
   verifyMp4ProxySignature,
+  verifySubtitleProxySignature,
 } from './proxy-sig.js';
 export {
   isWebOsUserAgent,
@@ -33,7 +36,11 @@ export {
 export {
   normalizeBaseUrl,
   resolveRequestBaseUrl,
+  type ResolveRequestBaseUrlOptions,
 } from './request-base-url.js';
+export {
+  wrapStremioSubtitleUrl,
+} from './stremio-subtitle-url.js';
 export {
   encryptSecret,
   decryptSecret,

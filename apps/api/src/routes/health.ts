@@ -21,6 +21,9 @@ export async function registerHealthRoutes(app: FastifyInstance) {
         android: lanBaseUrl
           ? `${lanBaseUrl}/manifest.json`
           : undefined,
+        public: env.PUBLIC_BASE_URL
+          ? `${normalizeBaseUrl(env.PUBLIC_BASE_URL)}/manifest.json`
+          : undefined,
       },
       lan: {
         addresses: lanAddresses,

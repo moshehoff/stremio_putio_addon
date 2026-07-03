@@ -1,10 +1,11 @@
 import {
   buildEpisodeFileStremioId,
-  parseMediaFilename,
+  resolveMediaWithFolderFallback,
   type ParsedMedia,
 } from '@putio-stremio/media-parser';
 import { createLogger } from '@putio-stremio/shared';
 import { prisma } from './client.js';
+import { getFolderName } from './folders.js';
 
 const log = createLogger('parser');
 
@@ -59,10 +60,13 @@ async function upsertParsedFile(
     id: string;
     putioFileId: number;
     name: string;
+    parentId: number;
     mediaId: string | null;
   },
 ): Promise<{ kind: ParsedMedia['kind']; upserted: boolean }> {
-  const parsed = parseMediaFilename(file.name);
+  const parentFolderName =
+    file.parentId > 0 ? await getFolderName(userId, file.parentId) : null;
+  const parsed = resolveMediaWithFolderFallback(file.name, parentFolderName);
   const existingMedia = file.mediaId
     ? await prisma.media.findUnique({ where: { id: file.mediaId } })
     : null;

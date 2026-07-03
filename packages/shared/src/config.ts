@@ -10,6 +10,11 @@ const envSchema = z.object({
     .url()
     .default('http://127.0.0.1:7000')
     .transform((url) => url.replace('://localhost', '://127.0.0.1')),
+  PUBLIC_BASE_URL: z
+    .string()
+    .url()
+    .optional()
+    .transform((url) => url?.replace('://localhost', '://127.0.0.1')),
   LOG_LEVEL: z
     .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
     .default('info'),

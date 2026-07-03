@@ -51,7 +51,11 @@ The PC transcodes video the TV cannot play directly.
 
 ## 5. Subtitles on LG
 
-Use Stremio's **OpenSubtitles** addon (installed separately). Embedded PGS subtitles in MKV often do not work on webOS.
+**Put.io Library v0.11+** serves external VTT subtitles from your Put.io account (folder subs, MKV tracks, etc.). Configure preferred languages in [Put.io settings](https://app.put.io/settings).
+
+Install the addon via the **same HTTPS tunnel** as Android (not `127.0.0.1`). Subtitle URLs are direct HTTPS to the addon proxy (`/v1/subtitles/{fileId}/{key}.vtt`) — no Stremio Desktop `11470` wrap on TV.
+
+Embedded PGS subtitles inside MKV still often fail on webOS — use Put.io's external VTT when possible. Manual HE-on-LG verification is still pending.
 
 ## Troubleshooting
 

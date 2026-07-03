@@ -19,6 +19,8 @@
 
 | Addon version | תאריך | שינויים עיקריים |
 |---------------|--------|------------------|
+| **0.11.0** | 2026-07 | **Put.io subtitles (M5):** `subtitles` resource + inline on streams; signed `/v1/subtitles/{fileId}/{key}.vtt` proxy; `lang` = ISO 639-1 (`en`, `he`, …); **ללא** OpenSubtitles. **Desktop fix:** route `/subtitles/:type/:id/:extra.json` (Stremio שולח `filename` + `videoSize`). Filter כתוביות רלוונטיות לפי title tokens. Folder-name fallback לשמות קבצים gibberish (`flhd-pap.mkv` → תיקיית האב). `PUBLIC_BASE_URL` + loopback שומר `127.0.0.1` (לא rewrite ל-LAN). Desktop loopback: wrap דרך `11470/subtitles.vtt?from=`. Request/response prints ב-API CLI. |
+| **0.10.0** | 2026-07 | Put.io events incremental scan (24h full fallback); OAuth refresh + OOB + per-user manifest (`/u/{slug}/manifest.json`); BlazeAnime bracket-prefix parser; stale library cleanup; `PUBLIC_BASE_URL` |
 | **0.9.0** | 2026-07 | BlazeAnime parser (`Show - 01`); פרקים עם `putio:episode:{putioFileId}` (ללא התנגשויות); cache manifest/catalog 300s; auto-scan (`AUTO_SCAN_INTERVAL_MINUTES`); M7 חלקי — `/configure`, OAuth callback, `OAuthToken` מוצפן ב-DB, token מ-DB עם fallback ל-`PUTIO_TOKEN` |
 | **0.8.0** | 2026-07 | **Folder → catalog:** קטלוג Stremio לכל תיקיית Put.io ברמת root; `putio_folder_{id}`; manifest דינמי מ-DB; `PutioFolder` + `PutioFile.rootFolderId`; סריקה בונה עץ תיקיות ומגלגלת תוכן מקונן; קטלוג מעורב (סדרות + סרטים + unsorted); series meta `putio:folder:{rootId}:series:{seriesKey}` |
 
@@ -303,6 +305,7 @@ Transport URL: `https://your-domain.com/manifest.json`
 | `/meta/{type}/{id}.json` | GET | `{ meta: MetaObject }` |
 | `/stream/{type}/{videoId}.json` | GET | `{ streams: Stream[] }` |
 | `/subtitles/{type}/{id}.json` | GET | `{ subtitles: Subtitle[] }` |
+| `/subtitles/{type}/{id}/{extraArgs}.json` | GET | **חובה ל-Desktop** — Stremio שולח `filename=…&videoSize=…` (כמו catalog extra) |
 
 **חובה:** CORS `Access-Control-Allow-Origin: *` על **כל** route.
 
@@ -441,16 +444,19 @@ putio:episode:{putioFileId}
 ```json
 {
   "subtitles": [{
-    "id": "he-1",
-    "url": "https://your-server.com/v1/subtitles/84392/he.vtt",
-    "lang": "heb"
+    "id": "he:subtitleKey…",
+    "url": "https://your-server.com/v1/subtitles/84392/{key}.vtt?exp=…&sig=…",
+    "lang": "he",
+    "name": "Pride.And.Prejudice.2005….srt"
   }]
 }
 ```
 
-- `lang`: ISO 639-2 (3 letters) — אם לא תקין, Stremio מציג את הטקסט כמו שהוא.
-- ל-webOS: **WebVTT/SRT חיצוני** עדיף על embedded PGS.
-- Stremio tip: `http://127.0.0.1:11470/subtitles.vtt?from=` — רלוונטי ל-desktop, **לא** ל-LG native.
+- `lang`: **ISO 639-1** (2 letters: `en`, `he`) — Stremio Desktop מזהה אותם; אם לא תקין, מציג את הטקסט כמו שהוא.
+- `name` (אופציונלי): שם קובץ הכתוביות מ-Put.io — עוזר לבחור track נכון כשיש רעש FLHD.
+- ל-webOS / tunnel / Android: URL ישיר ל-proxy שלנו (HTTPS).
+- Desktop **loopback only** (`127.0.0.1`): wrap דרך `http://127.0.0.1:11470/subtitles.vtt?from=` (Stremio local streaming server). **לא** ל-LG / Android / tunnel.
+- **מאומת (v0.11):** Desktop קורא ל-`/subtitles/{type}/{id}/{extra}.json` עם `filename` + `videoSize` — בלי route הזה הכפתור CC נשאר disabled (404).
 
 ### 3.8 User Configuration
 
@@ -771,11 +777,22 @@ interface ParsedMedia {
 }
 ```
 
-**ספרייה:** `parse-torrent-title` (Node).
+**ספרייה:** `parse-torrent-title` (Node) + custom fallbacks.
 
 **Regex fallback:** `\bS(\d{1,2})E(\d{1,2})\b`, `\b(\d{4})\b`.
 
-**⚠️ הנחה:** שמות inconsistent — קטלוג `Unmatched` חובה.
+**Folder-name fallback (v0.11.0):** כשה-filename הוא gibberish (למשל `flhd-pap.mkv` — קצר / בלי מילים אמיתיות), הפרסר משתמש בשם תיקיית האב:
+
+```
+Idan / Pride.And.Prejudice.2005.1080p.BluRay.x264-FLHD / flhd-pap.mkv
+  → isGibberishFilename("flhd-pap.mkv") = true
+  → guessTitleYearFromFolderName("Pride.And.Prejudice.2005…")
+  → movie "Pride And Prejudice" (2005), stremioId putio:movie:{fileId}
+```
+
+מימוש: `isGibberishFilename`, `guessTitleYearFromFolderName`, `resolveMediaWithFolderFallback` ב-`packages/media-parser`. בשימוש ב-`parse.ts` ו-`enrich.ts` (פוסטר TMDb לפי שם תיקייה).
+
+**⚠️ הנחה:** שמות inconsistent — unmatched נשארים כ-`putio:raw:` עם `title` מתיקייה כשאפשר.
 
 ### 8.4 Series Grouping
 
@@ -882,15 +899,18 @@ GET  /catalog/:type/:id/:extra*.json    // parse extraArgs query string
 
 GET  /meta/:type/:id.json
 GET  /stream/:type/:videoId.json
-GET  /subtitles/:type/:id.json
+GET  /subtitles/:type/:videoId.json
+GET  /subtitles/:type/:videoId/:extra.json   // Desktop: filename=&videoSize=
 
 GET  /configure                         // OAuth UI + paste token (M7)
 POST /configure
 GET  /oauth/start                       // OAuth redirect (M7)
 GET  /oauth/callback
 GET  /v1/proxy/:fileId                  // content proxy (M3)
-GET  /v1/subtitles/:fileId/:lang.vtt    // subtitle proxy (M5)
+GET  /v1/subtitles/:fileId/:key.vtt     // signed subtitle proxy (M5)
 ```
+
+**Debug:** `apps/api` מדפיס ל-CLI כל request/response (JSON bodies; proxy רק status + bytes).
 
 ### 10.3 CatalogService
 
@@ -1076,70 +1096,81 @@ proxyUrl = `/v1/proxy/hls/${fileId}/media.m3u8?subtitle_key=all`
 
 ### 12.1 מטרה
 
-כתוביות עברית (ועוד) שעובדות על LG — **external VTT/SRT**.
+כתוביות עברית (ועוד) שעובדות על Desktop / Android / LG — **external VTT** מ-Put.io בלבד.
 
-### 12.2 Priority Chain
+### 12.2 Priority Chain (v0.11.0)
 
 ```
-1. Put.io /files/{id}/subtitles (folder/mkv/opensubtitles)
-2. Cache in subtitle_cache table
-3. (M9+) OpenSubtitles API
-4. (M9+) Embedded extraction via ffprobe — לא ל-MVP
+1. Put.io GET /files/{id}/subtitles (folder / mkv / opensubtitles sources on Put.io account)
+2. Filter relevant tracks by title tokens (fileName + media.title) — Put.io לעיתים מחזיר רעש FLHD
+3. Signed proxy GET /v1/subtitles/{fileId}/{key}.vtt?exp=&sig=
+4. OpenSubtitles API — cancelled forever (out of scope)
 ```
+
+**מימוש:**
+- `packages/db/src/subtitles.ts` — list, filter, lang map, build URLs
+- `apps/api/src/services/subtitles.ts` + `streams.ts` (`attachSubtitles`)
+- `apps/api/src/routes/proxy.ts` — signed VTT download from Put.io (`format=webvtt`)
+- אין `subtitle_cache` table — on-demand בלבד
 
 ### 12.3 SubtitleService
 
 ```typescript
-interface SubtitleService {
-  getSubtitles(type: string, id: string, userId: string): Promise<Subtitle[]>;
-  getSubtitleFile(fileId: number, key: string): Promise<Buffer>;
-}
+// packages/db/src/subtitles.ts
+getPutioSubtitlesForVideo(videoId, userId, baseUrl, secret)
+getPutioSubtitlesForResolvedFile(file, userId, baseUrl, secret)
+filterRelevantPutioSubtitles(subs, fileName, mediaTitle?)
+mapPutioLanguageToStremio(language) // → ISO 639-1
 ```
 
-**Worker (prefetch):**
-```
-On index → GET /files/{id}/subtitles
-→ for each sub with language matching heb/eng:
-   GET /files/{id}/subtitles/{key}?format=webvtt
-   → store in DB / filesystem
-```
+**Filter:** tokens באורך ≥4 מ-`fileName` + `mediaTitle` (למשל `pride`, `prejudice`). אם אף track לא תואם — מחזירים את כל הרשימה (fallback).
 
 ### 12.4 Stremio Integration — 2 דרכים
 
-**דרך A (מועדפת ל-LG): inline ב-stream**
+**דרך A: inline ב-stream** (גם Desktop וגם LG)
 ```json
 {
   "streams": [{
     "url": "...",
     "subtitles": [
-      { "id": "he", "lang": "heb", "url": "https://addon.../v1/subtitles/84392/he.vtt" }
+      { "id": "he:key…", "lang": "he", "name": "….srt",
+        "url": "https://addon.../v1/subtitles/84392/{key}.vtt?exp=…&sig=…" }
     ]
   }]
 }
 ```
 
-**דרך B: subtitles resource**
+**דרך B: subtitles resource** (Desktop משתמש בזה בפועל)
 ```
 GET /subtitles/movie/putio:movie:84392.json
+GET /subtitles/movie/putio%3Amovie%3A84392/filename=flhd-pap.mkv&videoSize=9394529497.json
 → { subtitles: [...] }
 ```
 
-**⚠️ מאומת:** subtitles resource `id` בפרוטוקol מתייחס ל-OpenSubtitles hash — עם `idPrefixes: ["putio:"]` משתמשים ב-ID שלנו.
+**⚠️ מאומת Desktop (v0.11):** בלי route ה-`/:extra.json` Stremio מקבל 404 והכפתור CC disabled — גם אם inline על stream עובד בתיאוריה (לעיתים stream ב-cache בלי subs).
+
+**Base URL לבניית לינקים** (`resolveRequestBaseUrl`):
+1. `Host` לא-loopback (tunnel / LAN) → `https?://{host}`
+2. אחרת `PUBLIC_BASE_URL` אם מוגדר
+3. אחרת `BASE_URL` (`http://127.0.0.1:7000`) — **לא** rewrite אוטומטי ל-LAN על loopback
+
+**Desktop loopback wrap:** כש-`baseUrl` הוא `127.0.0.1`, subtitle URLs עוברים דרך `http://127.0.0.1:11470/subtitles.vtt?from=`. Tunnel / Android / LG מקבלים URL ישיר ל-addon.
 
 ### 12.5 Language Codes
 
-| מקור | קוד ל-Stremio |
-|------|---------------|
-| Hebrew | `heb` (ISO 639-2) |
-| English | `eng` |
-
-Put.io מחזיר `"English"`, `"Hebrew"` — mapping table נדרש.
+| מקור Put.io | קוד ל-Stremio (ISO 639-1) |
+|-------------|---------------------------|
+| English / en / eng | `en` |
+| Hebrew / he / heb / iw | `he` |
+| אחר | 2 אותיות ראשונות או `und` |
 
 ### 12.6 Definition of Done — M5
 
-- [ ] סרט עם כתוביות ב-Put.io → מופיעות ב-Stremio
-- [ ] LG webOS: כתוביות עברית VTT נראות
-- [ ] אין תלות ב-embedded PGS
+- [x] סרט עם כתוביות ב-Put.io → מופיעות ב-Stremio Desktop (tunnel + local) — v0.11.0
+- [x] Route `/subtitles/:type/:id/:extra.json` (filename + videoSize)
+- [x] `lang` = `en` / `he`; signed VTT proxy
+- [ ] LG webOS: כתוביות עברית VTT נראות (manual test)
+- [x] אין תלות ב-embedded PGS / OpenSubtitles API
 
 ---
 
@@ -1211,11 +1242,32 @@ userSlug = base64url(encrypt(userId))
 
 ### 14.4 Deployment
 
+**מצב נוכחי (home lab):** PC + `npm run dev` + Cloudflare quick tunnel (`npm run tunnel`) או LAN IP.
+
+**תוכנית ענן (M10 — לא מומש):**
+
+| שלב | משימה |
+|-----|--------|
+| M10.1 | VPS (Hetzner / similar) + Docker Compose: `api`, `postgres`, `redis` |
+| M10.2 | Domain + HTTPS (Caddy / nginx + Let's Encrypt) |
+| M10.3 | `BASE_URL` + `PUBLIC_BASE_URL=https://addon.example.com` |
+| M10.4 | Register OAuth redirect: `https://addon.example.com/oauth/callback` |
+| M10.5 | `/configure` on server → save token; `npm run scan` via cron or auto-scan |
+| M10.6 | Stremio install from stable manifest (no tunnel restart) |
+
 ```
-nginx → api:7000
-worker (separate container)
+nginx/caddy → api:7000
 postgres, redis
 ```
+
+**Env production:**
+
+| Variable | Example |
+|----------|---------|
+| `BASE_URL` | `https://addon.example.com` |
+| `PUBLIC_BASE_URL` | same as BASE_URL |
+| `SECRET_KEY` | random 32+ bytes |
+| `DATABASE_URL` | postgres connection string |
 
 ---
 
@@ -1523,23 +1575,25 @@ export const mockFilesList = {
 
 ### Phase M5a — Subtitles English (2–3 ימים)
 
-| # | משימה | Acceptance Criteria |
-|---|--------|---------------------|
-| M5a.1 | Put.io subtitles list/download | Integration test |
-| M5a.2 | Subtitle worker prefetch | VTT in DB |
-| M5a.3 | Language mapping `eng` | Correct lang codes |
-| M5a.4 | Subtitle proxy route | Serves webvtt |
-| M5a.5 | Inline subtitles on stream | Stremio Android shows EN subs |
+| # | משימה | Acceptance Criteria | סטטוס |
+|---|--------|---------------------|--------|
+| M5a.1 | Put.io subtitles list/download | Integration test | ✅ v0.11.0 |
+| M5a.2 | Subtitle worker prefetch | VTT in DB | ⏭ skipped — on-demand |
+| M5a.3 | Language mapping `en` (ISO 639-1) | Correct lang codes | ✅ v0.11.0 |
+| M5a.4 | Subtitle proxy route | Serves webvtt | ✅ v0.11.0 |
+| M5a.5 | Inline subtitles on stream | Stream includes `subtitles[]` | ✅ v0.11.0 |
+| M5a.6 | `/subtitles/:type/:id/:extra.json` | Desktop CC button enabled | ✅ v0.11.0 |
+| M5a.7 | Filter relevant Put.io tracks | Title-token filter | ✅ v0.11.0 |
 
-**🎯 Milestone M5a:** כתוביות אנגלית על אנדרואיד.
+**🎯 Milestone M5a:** כתוביות אנגלית על Desktop / Android.
 
 ### Phase M5b — Subtitles Hebrew + LG (2–3 ימים)
 
-| # | משימה | Acceptance Criteria |
-|---|--------|---------------------|
-| M5b.1 | Hebrew language mapping `heb` | Put.io → Stremio codes |
-| M5b.2 | Prefer external VTT over embedded | No PGS dependency |
-| M5b.3 | **Manual test LG webOS** | Play + Hebrew subs visible |
+| # | משימה | Acceptance Criteria | סטטוס |
+|---|--------|---------------------|--------|
+| M5b.1 | Hebrew language mapping `he` | Put.io → Stremio codes | ✅ v0.11.0 |
+| M5b.2 | Prefer external VTT over embedded | No PGS dependency | ✅ v0.11.0 |
+| M5b.3 | **Manual test LG webOS** | Play + Hebrew subs visible | pending |
 
 **🎯 Milestone M5b:** כתוביות עברית על LG.
 
@@ -1584,15 +1638,16 @@ export const mockFilesList = {
 
 ### Phase M9 — Polish & Production (ongoing)
 
-| # | משימה |
-|---|--------|
-| M9.1 | Events-based incremental index |
-| M9.2 | Continue Watching catalog |
-| M9.3 | HLS proxy support |
-| M9.4 | OpenSubtitles fallback |
-| M9.5 | Prometheus + Grafana |
-| M9.6 | GuessIt Python microservice |
-| M9.7 | StorageProvider abstraction (WebDAV, etc.) |
+| # | משימה | סטטוס |
+|---|--------|--------|
+| M9.1 | Events-based incremental index | ✅ v0.10.0 |
+| M9.2 | Continue Watching catalog | pending |
+| M9.3 | HLS proxy support | pending |
+| M9.4 | OpenSubtitles fallback | **cancelled** — Put.io subs only |
+| M9.5 | Prometheus + Grafana | pending |
+| M9.6 | GuessIt Python microservice | pending |
+| M9.7 | StorageProvider abstraction (WebDAV, etc.) | pending |
+| M9.8 | Cloud VPS deploy (see §14.4 M10) | planned |
 
 ---
 

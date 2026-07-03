@@ -43,7 +43,7 @@ describe('manifest', () => {
     const hasSubtitles = manifest.resources.some(
       (r) => typeof r === 'object' && r.name === 'subtitles',
     );
-    expect(hasSubtitles).toBe(false);
+    expect(hasSubtitles).toBe(true);
   });
 
   it('does not declare global series or unsorted catalogs', () => {
