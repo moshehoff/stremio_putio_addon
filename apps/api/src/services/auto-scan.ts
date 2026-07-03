@@ -1,4 +1,4 @@
-import { scanPutioLibrary, getPutioAccessToken } from '@putio-stremio/db';
+import { scanPutioLibrary, syncPutioLibrary, getPutioAccessToken } from '@putio-stremio/db';
 import { createLogger, getEnv } from '@putio-stremio/shared';
 
 const log = createLogger('auto-scan');
@@ -30,12 +30,20 @@ export function startAutoScan(): void {
         return;
       }
 
-      const result = await scanPutioLibrary({ putioToken: token });
+      const result = await syncPutioLibrary({ putioToken: token });
+      if (result.mode === 'noop') {
+        log.debug('Auto-scan skipped — no Put.io events since last sync');
+        return;
+      }
+
       log.info(
         {
           username: result.username,
+          mode: result.mode,
           filesFound: result.filesFound,
           filesUpserted: result.filesUpserted,
+          filesUnchanged: result.filesUnchanged,
+          filesRemoved: result.filesRemoved,
           enrichMovies: result.enrich?.moviesMatched,
           enrichCached: result.enrich
             ? result.enrich.moviesSkipped + result.enrich.unmatchedSkipped

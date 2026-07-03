@@ -8,9 +8,10 @@ import {
   normalizeBaseUrl,
 } from '@putio-stremio/shared';
 import { registerHealthRoutes } from './routes/health.js';
-import { registerManifestRoutes } from './routes/manifest.js';
-import { registerCatalogRoutes, registerMetaRoutes } from './routes/stremio.js';
-import { registerStreamRoutes } from './routes/stream.js';
+import {
+  registerDefaultAddonRoutes,
+  registerPerUserAddonRoutes,
+} from './routes/addon.js';
 import { registerProxyRoutes } from './routes/proxy.js';
 import { registerConfigureRoutes } from './routes/configure.js';
 import { startAutoScan } from './services/auto-scan.js';
@@ -45,10 +46,8 @@ export async function buildApp() {
   });
 
   await registerHealthRoutes(app);
-  await registerManifestRoutes(app);
-  await registerCatalogRoutes(app);
-  await registerMetaRoutes(app);
-  await registerStreamRoutes(app);
+  await registerDefaultAddonRoutes(app);
+  await registerPerUserAddonRoutes(app);
   await registerProxyRoutes(app);
   await registerConfigureRoutes(app);
 

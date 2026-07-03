@@ -223,7 +223,8 @@ function matchEpisode(value: string): { season: number; episode: number } | null
 function matchDashEpisode(
   value: string,
 ): { season: number; episode: number; title: string } | null {
-  const match = value.match(/^(.+?)\s-\s*(\d{1,3})(?=\s*\[|\s|$|\.)/);
+  const normalized = stripLeadingBracketTags(value);
+  const match = normalized.match(/^(.+?)\s-\s*(\d{1,3})(?=\s*\[|\s|$|\.)/);
   if (!match?.[1] || !match[2]) {
     return null;
   }
@@ -268,6 +269,10 @@ function extractYear(value: string): number | undefined {
     return undefined;
   }
   return Number.parseInt(match[0], 10);
+}
+
+function stripLeadingBracketTags(value: string): string {
+  return value.replace(/^(\[[^\]]*\]\s*)+/, '');
 }
 
 function cleanTitle(value: string): string {

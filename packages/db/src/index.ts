@@ -18,9 +18,15 @@ export {
 } from './stream.js';
 export {
   getDefaultUser,
+  getUserBySlug,
   parseMediaForUser,
+  cleanupStaleSeriesMeta,
   type ParseResult,
 } from './parse.js';
+export {
+  requireLibraryUser,
+  resolveLibraryUserId,
+} from './library-user.js';
 export {
   enrichLibraryMetadata,
   enrichIfConfigured,
@@ -51,14 +57,19 @@ export {
 } from './library-summary.js';
 export {
   scanPutioLibrary,
+  syncPutioLibrary,
   verifyPutioConnection,
   type ScanOptions,
   type ScanResult,
 } from './scan.js';
 export {
   getPutioAccessToken,
+  getPutioAccessTokenForSlug,
   hasPutioAccessToken,
   requirePutioAccessToken,
   savePutioAccessToken,
   exchangeOAuthCode,
+  pollOobCode,
+  requestOobCode,
+  refreshPutioAccessToken,
 } from './putio-token.js';

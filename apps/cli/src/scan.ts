@@ -39,7 +39,14 @@ async function main() {
   console.log(`Account:  ${result.username}`);
   console.log(`Found:    ${result.filesFound} video files`);
   if (!dryRun) {
+    console.log(`Mode:     ${result.mode}`);
     console.log(`Saved:    ${result.filesUpserted} files to database`);
+    if (result.filesUnchanged > 0) {
+      console.log(`Unchanged:${result.filesUnchanged} files (hash match)`);
+    }
+    if (result.filesRemoved > 0) {
+      console.log(`Removed:  ${result.filesRemoved} stale files`);
+    }
     console.log(`Scan run: ${result.scanRunId}`);
 
     if (result.parse) {

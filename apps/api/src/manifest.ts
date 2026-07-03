@@ -55,7 +55,7 @@ export function folderCatalogDisplayName(folderName: string): string {
 export function buildManifestBase(): Omit<Manifest, 'catalogs'> {
   return {
     id: 'com.putio.library',
-    version: '0.9.0',
+    version: '0.10.0',
     name: 'Put.io Library',
     description:
       'Stream your Put.io cloud library in Stremio — one catalog per top-level folder.',

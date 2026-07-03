@@ -142,6 +142,7 @@ export async function getLibrarySummary(userId: string): Promise<LibrarySummary>
     episodes: episodeCount,
     movies: movieCount,
     unmatched: unmatchedCount,
+    skipped: 0,
     totalFiles: episodeCount + movieCount + unmatchedCount,
   };
 

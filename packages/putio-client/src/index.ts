@@ -14,6 +14,9 @@ export type {
   ListAllFilesOptions,
   PaginatedFiles,
   PutioAccountInfo,
+  PutioEvent,
+  PutioEventType,
   PutioFileRecord,
   PutioSubtitleRecord,
 } from './types.js';
+export { PUTIO_LIBRARY_EVENT_TYPES } from './types.js';

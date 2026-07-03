@@ -1,6 +1,7 @@
 import { NotFoundError } from '@putio-stremio/shared';
 import { prisma } from './client.js';
 import { getDefaultUser } from './parse.js';
+import { requireLibraryUser } from './library-user.js';
 import { parseSeriesStremioId, seriesTitleFromKey } from './catalog.js';
 import { resolveBackdropUrl, resolvePosterUrl, PLACEHOLDER_POSTER } from './posters.js';
 
@@ -87,11 +88,11 @@ export async function getSeriesMeta(stremioId: string): Promise<StremioMeta> {
   };
 }
 
-export async function getMovieMeta(stremioId: string): Promise<StremioMeta> {
-  const user = await getDefaultUser();
-  if (!user) {
-    throw new NotFoundError('No library user');
-  }
+export async function getMovieMeta(
+  stremioId: string,
+  userId?: string,
+): Promise<StremioMeta> {
+  const user = await requireLibraryUser(userId);
 
   const movie = await prisma.media.findFirst({
     where: {
@@ -118,11 +119,11 @@ export async function getMovieMeta(stremioId: string): Promise<StremioMeta> {
   };
 }
 
-export async function getRawMediaMeta(stremioId: string): Promise<StremioMeta> {
-  const user = await getDefaultUser();
-  if (!user) {
-    throw new NotFoundError('No library user');
-  }
+export async function getRawMediaMeta(
+  stremioId: string,
+  userId?: string,
+): Promise<StremioMeta> {
+  const user = await requireLibraryUser(userId);
 
   const media = await prisma.media.findFirst({
     where: {

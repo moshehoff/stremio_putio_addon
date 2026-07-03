@@ -43,6 +43,24 @@ describe('parseMediaFilename', () => {
     expect(result.episode).toBe(1);
   });
 
+  it('parses BlazeAnime dash-episode names with a leading release tag', () => {
+    const result = parseMediaFilename(
+      '[BlazeAnime] One Punch Man - 12 [1080p].mkv',
+    );
+    expect(result.kind).toBe('episode');
+    expect(result.title).toBe('One Punch Man');
+    expect(result.seriesKey).toBe('one-punch-man');
+    expect(result.season).toBe(1);
+    expect(result.episode).toBe(12);
+  });
+
+  it('parses BlazeAnime dash-episode names without brackets after the number', () => {
+    const result = parseMediaFilename('One Punch Man - 03.mkv');
+    expect(result.kind).toBe('episode');
+    expect(result.seriesKey).toBe('one-punch-man');
+    expect(result.episode).toBe(3);
+  });
+
   it('parses movie names with year', () => {
     const result = parseMediaFilename('Alien.Romulus.2024.2160p.WEB-DL.mkv');
     expect(result.kind).toBe('movie');

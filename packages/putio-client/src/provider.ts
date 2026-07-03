@@ -8,6 +8,7 @@ import type {
   ListAllFilesOptions,
   PaginatedFiles,
   PutioAccountInfo,
+  PutioEvent,
   PutioFileRecord,
   PutioSubtitleRecord,
 } from './types.js';
@@ -47,6 +48,16 @@ type RawSubtitle = {
   source: string;
 };
 
+type RawPutioEvent = {
+  id: number;
+  created_at: string;
+  type: string;
+};
+
+type EventsResponse = {
+  events?: RawPutioEvent[];
+};
+
 export interface PutioMp4PlaybackInfo {
   available: boolean;
   mp4Size?: number;
@@ -62,6 +73,7 @@ export interface PutioProvider {
     perPage: number;
     fileTypes?: string[];
   }): Promise<PaginatedFiles>;
+  listEvents(): Promise<PutioEvent[]>;
   getDownloadUrl(fileId: number): Promise<string>;
   getMp4PlaybackInfo(
     fileId: number,
@@ -83,6 +95,7 @@ export function createPutioProvider(token: string): PutioProvider {
     getFile: (fileId) => withRetry(() => client.getFile(fileId)),
     listAllFiles: (options) => withRetry(() => client.listAllFiles(options)),
     listFilesPage: (options) => withRetry(() => client.listFilesPage(options)),
+    listEvents: () => withRetry(() => client.listEvents()),
     getDownloadUrl: (fileId) => withRetry(() => client.getDownloadUrl(fileId)),
     getMp4PlaybackInfo: (fileId, parentId) =>
       withRetry(() => client.getMp4PlaybackInfo(fileId, parentId)),
@@ -157,6 +170,11 @@ class PutioHttpClient {
       cursor: data.cursor ?? null,
       total: data.total ?? null,
     };
+  }
+
+  async listEvents(): Promise<PutioEvent[]> {
+    const data = await this.get<EventsResponse>('/events/list');
+    return (data.events ?? []).map(mapPutioEvent);
   }
 
   async getDownloadUrl(fileId: number): Promise<string> {
@@ -322,5 +340,13 @@ function mapPutioFile(file: RawPutioFile): PutioFileRecord {
     contentType: file.content_type,
     createdAt: file.created_at,
     crc32: file.crc32,
+  };
+}
+
+function mapPutioEvent(event: RawPutioEvent): PutioEvent {
+  return {
+    id: event.id,
+    createdAt: event.created_at,
+    type: event.type as PutioEvent['type'],
   };
 }

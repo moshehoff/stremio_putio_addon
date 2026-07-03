@@ -1,12 +1,29 @@
-import { getFolderCatalogDefinitions, hasPutioAccessToken } from '@putio-stremio/db';
+import {
+  getFolderCatalogDefinitions,
+  getDefaultUser,
+  getUserBySlug,
+  hasPutioAccessToken,
+} from '@putio-stremio/db';
 import { buildManifestWithCatalogs, type Manifest } from './manifest.js';
 
-export async function buildManifest(): Promise<Manifest> {
+export async function buildManifest(userSlug?: string): Promise<Manifest> {
+  const user = userSlug ? await getUserBySlug(userSlug) : await getDefaultUser();
   const [folders, connected] = await Promise.all([
-    getFolderCatalogDefinitions(),
-    hasPutioAccessToken(),
+    user ? getFolderCatalogDefinitions(user.id) : Promise.resolve([]),
+    user ? hasPutioAccessToken(user.id) : hasPutioAccessToken(),
   ]);
-  return buildManifestWithCatalogs(folders, {
+
+  const manifest = buildManifestWithCatalogs(folders, {
     configurationRequired: !connected,
   });
+
+  if (userSlug) {
+    return {
+      ...manifest,
+      id: `com.putio.library.${userSlug}`,
+      name: `Put.io Library (${userSlug})`,
+    };
+  }
+
+  return manifest;
 }

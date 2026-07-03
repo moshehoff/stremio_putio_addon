@@ -1,6 +1,7 @@
 import { NotFoundError } from '@putio-stremio/shared';
 import { prisma } from './client.js';
 import { getDefaultUser } from './parse.js';
+import { requireLibraryUser } from './library-user.js';
 
 export interface ResolvedPutioFile {
   putioFileId: number;
@@ -13,11 +14,9 @@ export interface ResolvedPutioFile {
 
 export async function resolveVideoToPutioFile(
   videoId: string,
+  userId?: string,
 ): Promise<ResolvedPutioFile> {
-  const user = await getDefaultUser();
-  if (!user) {
-    throw new NotFoundError('No library user');
-  }
+  const user = await requireLibraryUser(userId);
 
   const media = await prisma.media.findFirst({
     where: {

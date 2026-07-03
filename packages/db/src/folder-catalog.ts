@@ -9,6 +9,7 @@ import { prisma } from './client.js';
 import type { CatalogExtra, StremioMetaPreview } from './catalog.js';
 import { seriesTitleFromKey } from './catalog.js';
 import { getDefaultUser } from './parse.js';
+import { requireLibraryUser } from './library-user.js';
 import {
   resolveBackdropUrl,
   resolvePosterUrl,
@@ -51,10 +52,12 @@ export async function listFoldersWithMedia(
   return folders.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function getFolderCatalogDefinitions(): Promise<
-  FolderCatalogDefinition[]
-> {
-  const user = await getDefaultUser();
+export async function getFolderCatalogDefinitions(
+  userId?: string,
+): Promise<FolderCatalogDefinition[]> {
+  const user = userId
+    ? await requireLibraryUser(userId)
+    : await getDefaultUser();
   if (!user) {
     return [];
   }
@@ -75,16 +78,14 @@ function fileInRootFolder(rootFolderId: number) {
 export async function getFolderMediaCatalog(
   catalogId: string,
   extra: CatalogExtra = {},
+  userId?: string,
 ): Promise<StremioMetaPreview[]> {
   const rootFolderId = parseFolderCatalogId(catalogId);
   if (rootFolderId === null) {
     return [];
   }
 
-  const user = await getDefaultUser();
-  if (!user) {
-    return [];
-  }
+  const user = await requireLibraryUser(userId);
 
   const skip = extra.skip ?? 0;
   const search = extra.search?.trim().toLowerCase();
@@ -192,6 +193,7 @@ export async function getFolderMediaCatalog(
 
 export async function getFolderSeriesMeta(
   stremioId: string,
+  userId?: string,
 ): Promise<StremioMeta> {
   const parsed = parseFolderSeriesStremioId(stremioId);
   if (!parsed) {
@@ -199,10 +201,7 @@ export async function getFolderSeriesMeta(
   }
 
   const { parentId: rootFolderId, seriesKey } = parsed;
-  const user = await getDefaultUser();
-  if (!user) {
-    throw new NotFoundError('No library user');
-  }
+  const user = await requireLibraryUser(userId);
 
   const episodes = await prisma.media.findMany({
     where: {
